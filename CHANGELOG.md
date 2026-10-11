@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.39.2] - 2026-10-11
+
+### Added
+
+- **Vector Weather Iconography Engine** (`server/weather_icons.py`): Built a dedicated, scalable vector meteorological icon rendering library for e-ink dashboards. Generates crisp, high-contrast black-and-white vector glyphs for all WMO weather interpretation codes (`SUN`, `CLEAR`, `MOSTLY_SUN`, `PARTLY_CLOUD`, `CLOUDY`, `OVERCAST`, `DRIZZLE`, `LIGHT_RAIN`, `RAIN`, `HEAVY_RAIN`, `SHOWERS`, `THUNDER`, `THUNDERSTORM`, `SNOW`, `LIGHT_SNOW`, `HEAVY_SNOW`, `FREEZE_RAIN`, `FOG`, `WIND`, `UMBRELLA`, `PRECIPITATION`).
+- **ScaledDraw Vector Curves** (`server/canvas.py`): Added `arc()`, `pieslice()`, and `chord()` proxy methods to `ScaledDraw` to support curved vector weather iconography and high-DPI scaling across native panel resolutions.
+
+### Changed
+
+- **Weather Dashboard Visual Parity & Layout Overhaul** (`server/dashboard_dsl.py`, `server/dashboards.py`): Redesigned the built-in weather dashboard to achieve visual parity with the Morning and Evening transit views:
+  - **Header Alignment & Separator Rule**: Enforced 20px page margins, adaptive title sizing, and the iconic 2px black horizontal header divider line (`y = 62`).
+  - **Card Pill Banners & 2px Borders**: Upgraded all weather cards (`WeatherHeroWidget`, `MetricCardWidget`, `WeatherForecastWidget`) to use standard 2px black borders (`radius=10`) with `#f2f2f2` pill headers and dividing rules.
+  - **Hero Condition & Commute Advisory**: Added prominent 72x72 vector condition iconography, bold temperature typography, and a bottom commute advisory banner (`FAVORABLE COMMUTE CONDITIONS`, `RAIN EXPECTED`, `BREEZY`, `CHILLY`).
+  - **Precipitation Card Iconography & Status**: Added 52x52 umbrella/droplet iconography and dynamic status pills (`DRY CONDITIONS`, `CHANCE OF RAIN`, `RAIN EXPECTED`).
+  - **4-Day Forecast Strip**: Styled the 4-day outlook to match the bottom bus/citibike transit strips, featuring a `#f4f4f4` section banner, vertical column dividers, per-day vector weather icons, temperatures, and rain probabilities.
+
+---
+
 ## [1.39.1] - 2026-10-11
 
 ### Changed

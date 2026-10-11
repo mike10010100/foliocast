@@ -70,13 +70,15 @@ class TestDashboardDSL(unittest.TestCase):
 
     def test_layout_vstack_and_hstack(self):
         root = VStack(
-            padding=10,
+            padding_x=20,
+            padding_y=10,
             gap=10,
             children=[
                 WidgetNode(HeaderWidget(title="TEST HEADER"), fixed_size=50),
                 HStack(
                     flex=1.0,
                     gap=8,
+                    padding_x=5,
                     children=[
                         WidgetNode(
                             MetricCardWidget(
@@ -135,14 +137,66 @@ class TestDashboardDSL(unittest.TestCase):
 
     def test_weather_widgets(self):
         hero = WeatherHeroWidget()
-        hero.render(self.draw, Rect(20, 20, 500, 160), self.ctx)
+        hero.render(self.draw, Rect(20, 20, 500, 200), self.ctx)
 
-        forecast = WeatherForecastWidget(days=3)
+        # Weather hero with high precip advisory
+        wx_rain = get_mock_weather_data()
+        object.__setattr__(wx_rain, "precip_prob", 75)
+        ctx_rain = RenderContext(now=datetime.now(), weather_data=wx_rain)
+        hero.render(self.draw, Rect(20, 20, 500, 200), ctx_rain)
+
+        # Weather hero with wind advisory
+        wx_wind = get_mock_weather_data()
+        object.__setattr__(wx_wind, "precip_prob", 10)
+        object.__setattr__(wx_wind, "wind_speed", 22)
+        ctx_wind = RenderContext(now=datetime.now(), weather_data=wx_wind)
+        hero.render(self.draw, Rect(20, 20, 500, 200), ctx_wind)
+
+        # Weather hero with cold advisory
+        wx_cold = get_mock_weather_data()
+        object.__setattr__(wx_cold, "precip_prob", 5)
+        object.__setattr__(wx_cold, "wind_speed", 5)
+        object.__setattr__(wx_cold, "temp", 32)
+        ctx_cold = RenderContext(now=datetime.now(), weather_data=wx_cold)
+        hero.render(self.draw, Rect(20, 20, 500, 200), ctx_cold)
+
+        # Weather hero with heat advisory
+        wx_hot = get_mock_weather_data()
+        object.__setattr__(wx_hot, "precip_prob", 5)
+        object.__setattr__(wx_hot, "wind_speed", 5)
+        object.__setattr__(wx_hot, "temp", 92)
+        ctx_hot = RenderContext(now=datetime.now(), weather_data=wx_hot)
+        hero.render(self.draw, Rect(20, 20, 500, 200), ctx_hot)
+
+        # Forecast with border and without border
+        forecast = WeatherForecastWidget(days=4, border=True)
         forecast.render(self.draw, Rect(20, 180, 780, 290), self.ctx)
+
+        forecast_noborder = WeatherForecastWidget(days=3, border=False)
+        forecast_noborder.render(self.draw, Rect(20, 180, 780, 290), self.ctx)
+
+        # Compact forecast
+        forecast_compact = WeatherForecastWidget(days=4, border=True)
+        forecast_compact.render(self.draw, Rect(20, 180, 780, 260), self.ctx)
 
         # Offline weather hero
         ctx_no_wx = RenderContext(now=datetime.now())
         hero.render(self.draw, Rect(20, 20, 500, 160), ctx_no_wx)
+
+        # Tall precipitation metric cards across probability tiers
+        card_dry = MetricCardWidget(
+            title="PRECIPITATION", source="precip_prob", unit="%", badge="RADAR"
+        )
+        card_dry.render(self.draw, Rect(20, 20, 240, 240), self.ctx)
+
+        # Mid probability tier
+        wx_mid = get_mock_weather_data()
+        object.__setattr__(wx_mid, "precip_prob", 40)
+        ctx_mid = RenderContext(now=datetime.now(), weather_data=wx_mid)
+        card_dry.render(self.draw, Rect(20, 20, 240, 240), ctx_mid)
+
+        # High probability tier
+        card_dry.render(self.draw, Rect(20, 20, 240, 240), ctx_rain)
 
     def test_transit_widgets(self):
         bus_bar = BusBarWidget()
@@ -269,13 +323,16 @@ class TestDashboardRegistry(unittest.TestCase):
         header_with_bright = HeaderWidget(show_brightness=True)
         header_with_bright.render(draw, Rect(20, 10, 780, 60), ctx)
 
-        header_without_bright = HeaderWidget(show_brightness=False)
+        header_without_bright = HeaderWidget(show_brightness=False, show_divider=False)
         header_without_bright.render(draw, Rect(20, 10, 780, 60), ctx)
 
         # Parse from widget spec
-        parsed = parse_widget({"type": "header", "show_brightness": False})
+        parsed = parse_widget(
+            {"type": "header", "show_brightness": False, "show_divider": False}
+        )
         self.assertIsInstance(parsed, HeaderWidget)
         self.assertFalse(parsed.show_brightness)
+        self.assertFalse(parsed.show_divider)
 
     def test_button_bar_widget_views(self):
         img = Image.new("RGB", (800, 480), "white")

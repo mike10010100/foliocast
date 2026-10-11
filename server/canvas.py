@@ -155,6 +155,64 @@ class ScaledDraw:
             **kwargs,
         )
 
+    def arc(
+        self,
+        xy: Any,
+        start: float,
+        end: float,
+        fill: Any = None,
+        width: float = 1,
+        **kwargs: Any,
+    ) -> None:
+        self._d.arc(
+            self._box(xy),
+            start=start,
+            end=end,
+            fill=fill,
+            width=self._outline(width),
+            **kwargs,
+        )
+
+    def pieslice(
+        self,
+        xy: Any,
+        start: float,
+        end: float,
+        fill: Any = None,
+        outline: Any = None,
+        width: float = 1,
+        **kwargs: Any,
+    ) -> None:
+        self._d.pieslice(
+            self._box(xy),
+            start=start,
+            end=end,
+            fill=fill,
+            outline=outline,
+            width=self._outline(width),
+            **kwargs,
+        )
+
+    def chord(
+        self,
+        xy: Any,
+        start: float,
+        end: float,
+        fill: Any = None,
+        outline: Any = None,
+        width: float = 1,
+        **kwargs: Any,
+    ) -> None:
+        self._d.chord(
+            self._box(xy),
+            start=start,
+            end=end,
+            fill=fill,
+            outline=outline,
+            width=self._outline(width),
+            **kwargs,
+        )
+
 
 STOPS: list[dict[str, Any]] = [
     {

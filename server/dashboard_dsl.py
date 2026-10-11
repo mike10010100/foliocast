@@ -24,6 +24,7 @@ from canvas import (
 )
 from data_sources import resolve_field_path
 from weather import WeatherSnapshot
+from weather_icons import draw_weather_icon
 
 
 @dataclass(frozen=True)
@@ -96,11 +97,20 @@ class LayoutNode:
         fixed_size: Optional[int] = None,
         padding: int = 0,
         gap: int = 0,
+        padding_x: Optional[int] = None,
+        padding_y: Optional[int] = None,
     ) -> None:
         self.flex = flex
         self.fixed_size = fixed_size
         self.padding = padding
         self.gap = gap
+        self.padding_x = padding_x if padding_x is not None else padding
+        self.padding_y = padding_y if padding_y is not None else padding
+
+    def get_inner_rect(self, rect: Rect) -> Rect:
+        if self.padding_x > 0 or self.padding_y > 0:
+            return rect.inset(self.padding_x, self.padding_y)
+        return rect
 
     def layout_and_render(self, draw: Any, rect: Rect, ctx: RenderContext) -> None:
         raise NotImplementedError
@@ -115,12 +125,20 @@ class WidgetNode(LayoutNode):
         flex: float = 1.0,
         fixed_size: Optional[int] = None,
         padding: int = 0,
+        padding_x: Optional[int] = None,
+        padding_y: Optional[int] = None,
     ) -> None:
-        super().__init__(flex=flex, fixed_size=fixed_size, padding=padding)
+        super().__init__(
+            flex=flex,
+            fixed_size=fixed_size,
+            padding=padding,
+            padding_x=padding_x,
+            padding_y=padding_y,
+        )
         self.widget = widget
 
     def layout_and_render(self, draw: Any, rect: Rect, ctx: RenderContext) -> None:
-        r = rect.inset(self.padding) if self.padding > 0 else rect
+        r = self.get_inner_rect(rect)
         self.widget.render(draw, r, ctx)
 
 
@@ -134,15 +152,24 @@ class VStack(LayoutNode):
         fixed_size: Optional[int] = None,
         padding: int = 0,
         gap: int = 0,
+        padding_x: Optional[int] = None,
+        padding_y: Optional[int] = None,
     ) -> None:
-        super().__init__(flex=flex, fixed_size=fixed_size, padding=padding, gap=gap)
+        super().__init__(
+            flex=flex,
+            fixed_size=fixed_size,
+            padding=padding,
+            gap=gap,
+            padding_x=padding_x,
+            padding_y=padding_y,
+        )
         self.children = children or []
 
     def layout_and_render(self, draw: Any, rect: Rect, ctx: RenderContext) -> None:
         if not self.children:
             return
 
-        r = rect.inset(self.padding) if self.padding > 0 else rect
+        r = self.get_inner_rect(rect)
         total_h = r.h
         total_gaps = (len(self.children) - 1) * self.gap
         avail_h = max(0, total_h - total_gaps)
@@ -181,15 +208,24 @@ class HStack(LayoutNode):
         fixed_size: Optional[int] = None,
         padding: int = 0,
         gap: int = 0,
+        padding_x: Optional[int] = None,
+        padding_y: Optional[int] = None,
     ) -> None:
-        super().__init__(flex=flex, fixed_size=fixed_size, padding=padding, gap=gap)
+        super().__init__(
+            flex=flex,
+            fixed_size=fixed_size,
+            padding=padding,
+            gap=gap,
+            padding_x=padding_x,
+            padding_y=padding_y,
+        )
         self.children = children or []
 
     def layout_and_render(self, draw: Any, rect: Rect, ctx: RenderContext) -> None:
         if not self.children:
             return
 
-        r = rect.inset(self.padding) if self.padding > 0 else rect
+        r = self.get_inner_rect(rect)
         total_w = r.w
         total_gaps = (len(self.children) - 1) * self.gap
         avail_w = max(0, total_w - total_gaps)
@@ -228,10 +264,18 @@ class Box(LayoutNode):
         radius: int = 6,
         border_width: int = 1,
         padding: int = 8,
+        padding_x: Optional[int] = None,
+        padding_y: Optional[int] = None,
         flex: float = 1.0,
         fixed_size: Optional[int] = None,
     ) -> None:
-        super().__init__(flex=flex, fixed_size=fixed_size, padding=padding)
+        super().__init__(
+            flex=flex,
+            fixed_size=fixed_size,
+            padding=padding,
+            padding_x=padding_x,
+            padding_y=padding_y,
+        )
         self.child = child
         self.border = border
         self.fill = fill
@@ -247,7 +291,7 @@ class Box(LayoutNode):
                 outline="black" if self.border else None,
                 width=self.border_width if self.border else 0,
             )
-        inner = rect.inset(self.padding)
+        inner = self.get_inner_rect(rect)
         self.child.layout_and_render(draw, inner, ctx)
 
 
@@ -268,6 +312,7 @@ class HeaderWidget(Widget):
         show_battery: bool = True,
         show_date: bool = True,
         show_brightness: bool = True,
+        show_divider: bool = True,
     ) -> None:
         self.badge = badge
         self.title = title
@@ -276,6 +321,7 @@ class HeaderWidget(Widget):
         self.show_battery = show_battery
         self.show_date = show_date
         self.show_brightness = show_brightness
+        self.show_divider = show_divider
 
     def render(self, draw: Any, rect: Rect, ctx: RenderContext) -> None:
         font_title = get_font(21, bold=True)
@@ -285,13 +331,16 @@ class HeaderWidget(Widget):
         time_str = ctx.now.strftime("%-I:%M %p")
         date_str = ctx.now.strftime("%A, %b %-d")
 
+        y_top = rect.y0 + (14 if rect.h >= 50 else max(1, (rect.h - 34) // 2))
+        y_sub = y_top + 24
+
         # Top-right clock
         time_x = rect.x1
         if self.show_time:
             tb = draw.textbbox((0, 0), time_str, font=font_time)
             time_w = tb[2] - tb[0]
             time_x = rect.x1 - time_w
-            draw.text((time_x, rect.y0 + 2), time_str, fill="black", font=font_time)
+            draw.text((time_x, y_top + 1), time_str, fill="black", font=font_time)
 
         # Date string below time
         date_x = rect.x1
@@ -299,7 +348,7 @@ class HeaderWidget(Widget):
             db = draw.textbbox((0, 0), date_str, font=font_sub)
             date_w = db[2] - db[0]
             date_x = rect.x1 - date_w
-            draw.text((date_x, rect.y0 + 26), date_str, fill="#555555", font=font_sub)
+            draw.text((date_x, y_sub), date_str, fill="#555555", font=font_sub)
 
         # Brightness toggle button immediately to left of time and date
         time_date_left = min(time_x, date_x)
@@ -307,7 +356,7 @@ class HeaderWidget(Widget):
         right_boundary = time_date_left
         if self.show_brightness:
             bright_x0 = time_date_left - bright_size - 10
-            draw_brightness_button(draw, bright_x0, rect.y0 + 4, size=bright_size)
+            draw_brightness_button(draw, bright_x0, y_top + 2, size=bright_size)
             right_boundary = bright_x0
 
         # Mock badge if applicable
@@ -315,7 +364,7 @@ class HeaderWidget(Widget):
             font_mock = get_font(11, bold=True)
             mw = mock_badge_width(draw, font_mock)
             mock_x = int(right_boundary - mw - 10)
-            draw_mock_badge(draw, mock_x, rect.y0 + 23, font=font_mock)
+            draw_mock_badge(draw, mock_x, y_sub - 3, font=font_mock)
             right_boundary = mock_x
 
         # Battery indicator to left of brightness button / mock badge
@@ -331,23 +380,22 @@ class HeaderWidget(Widget):
             draw_battery_indicator(
                 draw,
                 batt_x,
-                rect.y0 + 5,
+                y_top + 2,
                 ctx.batt_level,
                 is_charging=ctx.is_charging,
                 font=font_batt,
             )
 
         # Left badge + title
-        bx1 = draw_header_badge(
-            draw, rect.x0, rect.y0 + 1, self.badge, font_title, pad_x=12
-        )
+        bx1 = draw_header_badge(draw, rect.x0, y_top, self.badge, font_title, pad_x=12)
         title_text = ellipsize_to_width(
             draw, self.title, font_title, max(50, batt_x - bx1 - 20)
         )
-        draw.text((bx1 + 12, rect.y0 + 2), title_text, fill="black", font=font_title)
-        draw.text(
-            (bx1 + 12, rect.y0 + 26), self.subtitle, fill="#555555", font=font_sub
-        )
+        draw.text((bx1 + 12, y_top + 1), title_text, fill="black", font=font_title)
+        draw.text((bx1 + 12, y_sub), self.subtitle, fill="#555555", font=font_sub)
+
+        if self.show_divider:
+            draw.line([(rect.x0, rect.y1), (rect.x1, rect.y1)], fill="black", width=2)
 
 
 class MetricCardWidget(Widget):
@@ -402,48 +450,148 @@ class MetricCardWidget(Widget):
         if self.border:
             draw.rounded_rectangle(
                 [rect.x0, rect.y0, rect.x1, rect.y1],
-                radius=6,
+                radius=10,
                 fill="white",
+                outline="black",
+                width=2,
+            )
+
+        is_tall_card = rect.h >= 140
+        pill_h = 42 if is_tall_card else 0
+
+        if is_tall_card:
+            draw.rounded_rectangle(
+                [rect.x0, rect.y0, rect.x1, rect.y0 + pill_h],
+                radius=10,
+                fill="#f2f2f2",
+                outline="black",
+                width=2,
+            )
+            draw.rectangle(
+                [rect.x0 + 1, rect.y0 + pill_h - 10, rect.x1 - 1, rect.y0 + pill_h],
+                fill="#f2f2f2",
+            )
+            draw.line(
+                [(rect.x0, rect.y0 + pill_h), (rect.x1, rect.y0 + pill_h)],
+                fill="black",
+                width=2,
+            )
+
+            font_pill_title = get_font(15, bold=True)
+            draw.text(
+                (rect.x0 + 14, rect.y0 + 11),
+                self.title.upper(),
+                fill="black",
+                font=font_pill_title,
+            )
+
+            if self.badge:
+                font_badge = get_font(11, bold=True)
+                bb = draw.textbbox((0, 0), self.badge, font=font_badge)
+                bw = bb[2] - bb[0]
+                draw.rounded_rectangle(
+                    [rect.x1 - bw - 20, rect.y0 + 10, rect.x1 - 10, rect.y0 + 32],
+                    radius=4,
+                    fill="black",
+                )
+                draw.text(
+                    (rect.x1 - bw - 15, rect.y0 + 14),
+                    self.badge,
+                    fill="white",
+                    font=font_badge,
+                )
+        else:
+            pad = 12
+            font_label = get_font(12, bold=True)
+            draw.text(
+                (rect.x0 + pad, rect.y0 + pad),
+                self.title.upper(),
+                fill="#555555",
+                font=font_label,
+            )
+            if self.badge:
+                font_badge = get_font(10, bold=True)
+                bb = draw.textbbox((0, 0), self.badge, font=font_badge)
+                bw = bb[2] - bb[0] + 12
+                bx0 = rect.x1 - pad - bw
+                draw.rounded_rectangle(
+                    [bx0, rect.y0 + pad - 2, rect.x1 - pad, rect.y0 + pad + 14],
+                    radius=4,
+                    fill="black",
+                )
+                draw.text(
+                    (bx0 + 6, rect.y0 + pad), self.badge, fill="white", font=font_badge
+                )
+
+        val_str = self._resolve_value(ctx)
+        body_top = rect.y0 + (pill_h + 12 if is_tall_card else 26)
+
+        is_precip = self.source in ("precip_prob", "rain") or self.title.upper() in (
+            "PRECIPITATION",
+            "RAIN",
+        )
+        if is_precip and is_tall_card:
+            draw_weather_icon(
+                draw, rect.x0 + 14, body_top + 4, size=52, glyph="UMBRELLA"
+            )
+            font_val = get_font(48, bold=True)
+            pval_str = f"{val_str}%" if not val_str.endswith("%") else val_str
+            draw.text(
+                (rect.x0 + 74, body_top - 2), pval_str, fill="black", font=font_val
+            )
+
+            font_sub = get_font(12, bold=False)
+            sub_text = self.subtitle or "Probability of rain today"
+            draw.text(
+                (rect.x0 + 16, body_top + 68), sub_text, fill="#555555", font=font_sub
+            )
+
+            bot_y0 = rect.y1 - 38
+            bot_y1 = rect.y1 - 10
+            try:
+                prob = int(val_str.rstrip("%"))
+            except Exception:
+                prob = 0
+            if prob < 20:
+                p_text = "DRY CONDITIONS"
+                bg_col = "#f4f4f4"
+                fg_col = "black"
+            elif prob < 60:
+                p_text = "CHANCE OF RAIN"
+                bg_col = "#f4f4f4"
+                fg_col = "black"
+            else:
+                p_text = "RAIN EXPECTED"
+                bg_col = "black"
+                fg_col = "white"
+
+            draw.rounded_rectangle(
+                [rect.x0 + 14, bot_y0, rect.x1 - 14, bot_y1],
+                radius=6,
+                fill=bg_col,
                 outline="black",
                 width=1,
             )
+            font_pill = get_font(11, bold=True)
+            p_bb = draw.textbbox((0, 0), p_text, font=font_pill)
+            p_w = p_bb[2] - p_bb[0]
+            draw.text(
+                (rect.x0 + 14 + (rect.w - 28 - p_w) // 2, bot_y0 + 8),
+                p_text,
+                fill=fg_col,
+                font=font_pill,
+            )
+            return
 
         pad = 12
         inner_w = rect.w - (pad * 2)
-
-        font_label = get_font(12, bold=True)
         font_val = get_font(44 if rect.h >= 110 else 36, bold=True)
         font_unit = get_font(18, bold=True)
         font_sub = get_font(11, bold=False)
 
-        # Title
-        draw.text(
-            (rect.x0 + pad, rect.y0 + pad),
-            self.title.upper(),
-            fill="#555555",
-            font=font_label,
-        )
-
-        # Status badge in top right of card
-        if self.badge:
-            font_badge = get_font(10, bold=True)
-            bb = draw.textbbox((0, 0), self.badge, font=font_badge)
-            bw = bb[2] - bb[0] + 12
-            bx0 = rect.x1 - pad - bw
-            draw.rounded_rectangle(
-                [bx0, rect.y0 + pad - 2, rect.x1 - pad, rect.y0 + pad + 14],
-                radius=4,
-                fill="black",
-            )
-            draw.text(
-                (bx0 + 6, rect.y0 + pad), self.badge, fill="white", font=font_badge
-            )
-
-        # Value & Unit
-        val_str = self._resolve_value(ctx)
+        val_y = body_top
         vb = draw.textbbox((0, 0), val_str, font=font_val)
         vw = vb[2] - vb[0]
-        val_y = rect.y0 + (32 if rect.h >= 110 else 26)
         draw.text((rect.x0 + pad, val_y), val_str, fill="black", font=font_val)
 
         if self.unit:
@@ -454,7 +602,6 @@ class MetricCardWidget(Widget):
                 font=font_unit,
             )
 
-        # Subtitle
         if self.subtitle:
             sub_y = rect.y1 - pad - 12
             sub_text = ellipsize_to_width(draw, self.subtitle, font_sub, inner_w)
@@ -674,57 +821,135 @@ class WeatherHeroWidget(Widget):
         if self.border:
             draw.rounded_rectangle(
                 [rect.x0, rect.y0, rect.x1, rect.y1],
-                radius=6,
+                radius=10,
                 fill="white",
                 outline="black",
-                width=1,
+                width=2,
             )
+
+        pill_h = 42
+        draw.rounded_rectangle(
+            [rect.x0, rect.y0, rect.x1, rect.y0 + pill_h],
+            radius=10,
+            fill="#f2f2f2",
+            outline="black",
+            width=2,
+        )
+        draw.rectangle(
+            [rect.x0 + 1, rect.y0 + pill_h - 10, rect.x1 - 1, rect.y0 + pill_h],
+            fill="#f2f2f2",
+        )
+        draw.line(
+            [(rect.x0, rect.y0 + pill_h), (rect.x1, rect.y0 + pill_h)],
+            fill="black",
+            width=2,
+        )
+
+        font_pill_title = get_font(15, bold=True)
+        draw.text(
+            (rect.x0 + 14, rect.y0 + 11),
+            "CURRENT CONDITIONS",
+            fill="black",
+            font=font_pill_title,
+        )
+
+        font_badge = get_font(11, bold=True)
+        st_badge = "HOBOKEN, NJ"
+        sbb = draw.textbbox((0, 0), st_badge, font=font_badge)
+        sbw = sbb[2] - sbb[0]
+        draw.rounded_rectangle(
+            [rect.x1 - sbw - 22, rect.y0 + 10, rect.x1 - 10, rect.y0 + 32],
+            radius=4,
+            fill="black",
+        )
+        draw.text(
+            (rect.x1 - sbw - 16, rect.y0 + 14),
+            st_badge,
+            fill="white",
+            font=font_badge,
+        )
 
         wx = ctx.weather_data
         if wx is None:
             font_msg = get_font(14, bold=True)
             draw.text(
-                (rect.x0 + 16, rect.y0 + 20),
+                (rect.x0 + 16, rect.y0 + pill_h + 24),
                 "Weather telemetry offline",
                 fill="black",
                 font=font_msg,
             )
             return
 
-        pad = 16
-        font_temp = get_font(68 if rect.h >= 140 else 54, bold=True)
-        font_deg = get_font(26, bold=True)
-        font_cond = get_font(18, bold=True)
-        font_detail = get_font(13, bold=False)
-        font_label = get_font(11, bold=True)
-
-        # "CURRENT WEATHER" label
-        draw.text(
-            (rect.x0 + pad, rect.y0 + pad),
-            "CURRENT WEATHER",
-            fill="#555555",
-            font=font_label,
+        body_top = rect.y0 + pill_h + 12
+        icon_size = 72 if rect.h >= 180 else 52
+        draw_weather_icon(
+            draw,
+            rect.x0 + 16,
+            body_top - 2,
+            size=icon_size,
+            glyph=wx.condition_glyph,
         )
 
-        # Big Temp
+        # Temperature
+        font_temp = get_font(60 if rect.h >= 180 else 48, bold=True)
+        font_deg = get_font(24 if rect.h >= 180 else 20, bold=True)
+        temp_x = rect.x0 + icon_size + 24
         temp_str = f"{wx.temp}"
+        draw.text((temp_x, body_top - 6), temp_str, fill="black", font=font_temp)
         tb = draw.textbbox((0, 0), temp_str, font=font_temp)
-        temp_w = tb[2] - tb[0]
-        temp_y = rect.y0 + pad + 18
-        draw.text((rect.x0 + pad, temp_y), temp_str, fill="black", font=font_temp)
-        draw.text(
-            (rect.x0 + pad + temp_w + 2, temp_y + 6), "°F", fill="black", font=font_deg
-        )
+        tw = tb[2] - tb[0]
+        draw.text((temp_x + tw + 2, body_top), "°F", fill="black", font=font_deg)
 
         # Condition & High/Low right of temperature
-        cond_x = rect.x0 + pad + temp_w + 48
-        draw.text((cond_x, temp_y + 4), wx.condition, fill="black", font=font_cond)
+        hl_x = temp_x + tw + 44
+        font_cond = get_font(18, bold=True)
+        font_detail_bold = get_font(13, bold=True)
+        draw.text((hl_x, body_top + 4), wx.condition, fill="black", font=font_cond)
+        draw.text(
+            (hl_x, body_top + 28),
+            f"High: {wx.temp_max}°  •  Low: {wx.temp_min}°",
+            fill="#333333",
+            font=font_detail_bold,
+        )
 
-        hl_str = f"High: {wx.temp_max}°  •  Low: {wx.temp_min}°"
-        draw.text((cond_x, temp_y + 30), hl_str, fill="#333333", font=font_detail)
+        # Metrics row
+        metrics_y = body_top + 78
+        font_detail = get_font(13, bold=False)
+        metrics_str = f"Feels like {wx.apparent_temp}°   •   Humidity: {wx.humidity}%   •   Wind: {wx.wind_speed} mph"
+        draw.text(
+            (rect.x0 + 18, metrics_y), metrics_str, fill="#444444", font=font_detail
+        )
 
-        feels_str = f"Feels like {wx.apparent_temp}°  •  Humidity: {wx.humidity}%  •  Wind: {wx.wind_speed} mph"
-        draw.text((cond_x, temp_y + 50), feels_str, fill="#555555", font=font_detail)
+        # Bottom decision / status advisory banner
+        if rect.h >= 180:
+            bot_y0 = rect.y1 - 38
+            bot_y1 = rect.y1 - 10
+            draw.rounded_rectangle(
+                [rect.x0 + 14, bot_y0, rect.x1 - 14, bot_y1],
+                radius=6,
+                fill="#f4f4f4",
+                outline="black",
+                width=1,
+            )
+            if wx.precip_prob >= 50:
+                status_text = "⚠️ RAIN EXPECTED TODAY • CARRY UMBRELLA"
+            elif wx.wind_speed >= 15:
+                status_text = "💨 BREEZY ALONG THE HUDSON WATERFRONT"
+            elif wx.temp <= 38:
+                status_text = "❄️ CHILLY COMMUTE • WINTER COAT RECOMMENDED"
+            elif wx.temp >= 85:
+                status_text = "☀️ HIGH HEAT • STAY HYDRATED & COOL"
+            else:
+                status_text = "● FAVORABLE COMMUTE CONDITIONS IN HOBOKEN"
+
+            st_bb = draw.textbbox((0, 0), status_text, font=font_badge)
+            st_w = st_bb[2] - st_bb[0]
+            draw.text(
+                (rect.x0 + 14 + (rect.w - 28 - st_w) // 2, bot_y0 + 8),
+                status_text,
+                fill="black",
+                font=font_badge,
+            )
 
 
 class WeatherForecastWidget(Widget):
@@ -738,11 +963,37 @@ class WeatherForecastWidget(Widget):
         if self.border:
             draw.rounded_rectangle(
                 [rect.x0, rect.y0, rect.x1, rect.y1],
-                radius=6,
+                radius=10,
                 fill="white",
                 outline="black",
+                width=2,
+            )
+            banner_h = 24
+            draw.rounded_rectangle(
+                [rect.x0, rect.y0, rect.x1, rect.y0 + banner_h],
+                radius=10,
+                fill="#f4f4f4",
+                outline="black",
+                width=2,
+            )
+            draw.rectangle(
+                [rect.x0 + 1, rect.y0 + 12, rect.x1 - 1, rect.y0 + banner_h],
+                fill="#f4f4f4",
+            )
+            draw.line(
+                [(rect.x0, rect.y0 + banner_h), (rect.x1, rect.y0 + banner_h)],
+                fill="black",
                 width=1,
             )
+            draw.text(
+                (rect.x0 + 14, rect.y0 + 5),
+                "4-DAY OUTLOOK • MILE SQUARE EXTENDED FORECAST",
+                fill="#444444",
+                font=get_font(11, bold=True),
+            )
+            fc_body_y0 = rect.y0 + banner_h
+        else:
+            fc_body_y0 = rect.y0
 
         wx = ctx.weather_data
         forecasts = wx.forecast if (wx and wx.forecast) else ()
@@ -751,8 +1002,7 @@ class WeatherForecastWidget(Widget):
 
         items = list(forecasts[: self.days])
         count = len(items)
-        pad = 8
-        card_w = (rect.w - (pad * (count + 1))) // count
+        col_w = rect.w // count
 
         font_day = get_font(13, bold=True)
         font_cond = get_font(11, bold=False)
@@ -760,36 +1010,58 @@ class WeatherForecastWidget(Widget):
         font_precip = get_font(11, bold=True)
 
         for i, f in enumerate(items):
-            x0 = rect.x0 + pad + i * (card_w + pad)
-            x1 = x0 + card_w
-            y0 = rect.y0 + pad
-            y1 = rect.y1 - pad
+            cx0 = rect.x0 + i * col_w
+            if i > 0:
+                draw.line(
+                    [(cx0, fc_body_y0 + 6), (cx0, rect.y1 - 6)],
+                    fill="#dddddd",
+                    width=1,
+                )
 
-            draw.rounded_rectangle(
-                [x0, y0, x1, y1], radius=4, fill="#f9f9f9", outline="#cccccc", width=1
+            # Day name
+            draw.text(
+                (cx0 + 14, fc_body_y0 + 8),
+                f.day_name.upper(),
+                fill="black",
+                font=font_day,
             )
 
-            # Day
-            draw.text(
-                (x0 + 10, y0 + 8), f.day_name.upper(), fill="black", font=font_day
+            # Weather icon
+            icon_s = 46 if rect.h >= 100 else 36
+            draw_weather_icon(
+                draw,
+                cx0 + 12,
+                fc_body_y0 + 26,
+                size=icon_s,
+                glyph=f.condition_glyph,
             )
 
             # High / Low
-            hl_str = f"{f.temp_max}° / {f.temp_min}°"
-            draw.text((x0 + 10, y0 + 28), hl_str, fill="black", font=font_hl)
+            draw.text(
+                (cx0 + 66, fc_body_y0 + 26),
+                f"{f.temp_max}° / {f.temp_min}°",
+                fill="black",
+                font=font_hl,
+            )
 
             # Condition
-            cond_short = ellipsize_to_width(draw, f.condition, font_cond, card_w - 20)
-            draw.text((x0 + 10, y0 + 48), cond_short, fill="#444444", font=font_cond)
+            cond_short = ellipsize_to_width(draw, f.condition, font_cond, col_w - 74)
+            draw.text(
+                (cx0 + 66, fc_body_y0 + 44), cond_short, fill="#555555", font=font_cond
+            )
 
-            # Rain chance
-            if f.precip_probability > 0:
-                draw.text(
-                    (x0 + 10, y0 + 66),
-                    f"{f.precip_probability}% rain",
-                    fill="#111111",
-                    font=font_precip,
-                )
+            # Rain probability
+            rain_str = (
+                f"{f.precip_probability}% rain"
+                if f.precip_probability > 0
+                else "0% rain"
+            )
+            draw.text(
+                (cx0 + 66, fc_body_y0 + 60),
+                rain_str,
+                fill="#111111",
+                font=font_precip,
+            )
 
 
 # ---------------------------------------------------------------------------

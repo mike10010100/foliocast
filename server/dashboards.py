@@ -84,6 +84,7 @@ def parse_widget(data: dict[str, Any]) -> Widget:
             show_battery=data.get("show_battery", True),
             show_date=data.get("show_date", True),
             show_brightness=data.get("show_brightness", True),
+            show_divider=data.get("show_divider", True),
         )
     if wtype in ("weather_hero", "weather"):
         return WeatherHeroWidget(
@@ -149,6 +150,8 @@ def parse_layout_node(data: dict[str, Any]) -> LayoutNode:
     if fixed_size is not None:
         fixed_size = int(fixed_size)
     padding = int(data.get("padding", 0))
+    padding_x = int(data.get("padding_x", padding))
+    padding_y = int(data.get("padding_y", padding))
     gap = int(data.get("gap", 0))
 
     if node_type == "vstack":
@@ -158,6 +161,8 @@ def parse_layout_node(data: dict[str, Any]) -> LayoutNode:
             flex=flex,
             fixed_size=fixed_size,
             padding=padding,
+            padding_x=padding_x,
+            padding_y=padding_y,
             gap=gap,
         )
 
@@ -168,6 +173,8 @@ def parse_layout_node(data: dict[str, Any]) -> LayoutNode:
             flex=flex,
             fixed_size=fixed_size,
             padding=padding,
+            padding_x=padding_x,
+            padding_y=padding_y,
             gap=gap,
         )
 
@@ -184,13 +191,22 @@ def parse_layout_node(data: dict[str, Any]) -> LayoutNode:
             fill=data.get("fill"),
             radius=int(data.get("radius", 6)),
             padding=int(data.get("padding", 8)),
+            padding_x=padding_x,
+            padding_y=padding_y,
             flex=flex,
             fixed_size=fixed_size,
         )
 
     # Otherwise it is a leaf widget
     widget = parse_widget(data)
-    return WidgetNode(widget=widget, flex=flex, fixed_size=fixed_size, padding=padding)
+    return WidgetNode(
+        widget=widget,
+        flex=flex,
+        fixed_size=fixed_size,
+        padding=padding,
+        padding_x=padding_x,
+        padding_y=padding_y,
+    )
 
 
 def validate_dashboard_spec(data: dict[str, Any]) -> DashboardSpec:
@@ -233,6 +249,8 @@ def validate_dashboard_spec(data: dict[str, Any]) -> DashboardSpec:
 def _builtin_weather_spec() -> DashboardSpec:
     layout = {
         "type": "vstack",
+        "padding_x": 20,
+        "gap": 10,
         "children": [
             {
                 "type": "header",
@@ -242,15 +260,16 @@ def _builtin_weather_spec() -> DashboardSpec:
                 "show_time": True,
                 "show_battery": True,
                 "show_date": True,
+                "height": 62,
             },
             {
                 "type": "hstack",
                 "flex": 2.2,
-                "gap": 10,
+                "gap": 14,
                 "children": [
                     {
                         "type": "weather_hero",
-                        "flex": 2.2,
+                        "flex": 2.1,
                         "show_details": True,
                     },
                     {
@@ -266,11 +285,12 @@ def _builtin_weather_spec() -> DashboardSpec:
             },
             {
                 "type": "weather_forecast",
-                "height": 115,
+                "height": 108,
                 "days": 4,
             },
             {
                 "type": "button_bar",
+                "height": 42,
             },
         ],
     }
