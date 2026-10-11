@@ -531,27 +531,101 @@ class MetricCardWidget(Widget):
             "RAIN",
         )
         if is_precip and is_tall_card:
-            draw_weather_icon(
-                draw, rect.x0 + 14, body_top + 4, size=52, glyph="UMBRELLA"
-            )
-            font_val = get_font(48, bold=True)
-            pval_str = f"{val_str}%" if not val_str.endswith("%") else val_str
-            draw.text(
-                (rect.x0 + 74, body_top - 2), pval_str, fill="black", font=font_val
-            )
-
-            font_sub = get_font(12, bold=False)
-            sub_text = self.subtitle or "Probability of rain today"
-            draw.text(
-                (rect.x0 + 16, body_top + 68), sub_text, fill="#555555", font=font_sub
-            )
-
-            bot_y0 = rect.y1 - 38
-            bot_y1 = rect.y1 - 10
             try:
                 prob = int(val_str.rstrip("%"))
             except Exception:
                 prob = 0
+
+            is_very_tall = rect.h >= 240
+            icon_s = 64 if is_very_tall else 52
+            draw_weather_icon(
+                draw,
+                rect.x0 + (16 if is_very_tall else 14),
+                body_top + 2,
+                size=icon_s,
+                glyph="UMBRELLA",
+            )
+            font_val = get_font(56 if is_very_tall else 48, bold=True)
+            pval_str = f"{val_str}%" if not val_str.endswith("%") else val_str
+            text_x = rect.x0 + (88 if is_very_tall else 74)
+            draw.text((text_x, body_top - 2), pval_str, fill="black", font=font_val)
+
+            font_sub = get_font(12, bold=False)
+            sub_text = self.subtitle or "Rain probability today"
+            sub_y = body_top + (66 if is_very_tall else 62)
+            draw.text(
+                (rect.x0 + 16, sub_y),
+                sub_text,
+                fill="#555555",
+                font=font_sub,
+            )
+
+            if is_very_tall:
+                p_div_y = body_top + 84 + 14  # Matches div_y in WeatherHeroWidget
+                draw.line(
+                    [(rect.x0 + 16, p_div_y), (rect.x1 - 16, p_div_y)],
+                    fill="#e0e0e0",
+                    width=1,
+                )
+                meter_y0 = p_div_y + 14
+                meter_h = 16
+            else:
+                meter_y0 = body_top + 84
+                meter_h = 10
+
+            mx0 = rect.x0 + 16
+            mx1 = rect.x1 - 16
+            meter_w = mx1 - mx0
+            draw.rounded_rectangle(
+                [mx0, meter_y0, mx1, meter_y0 + meter_h],
+                radius=5 if is_very_tall else 4,
+                fill="#eeeeee",
+                outline="black",
+                width=1,
+            )
+            fill_w = int(round(meter_w * (max(0, min(100, prob)) / 100.0)))
+            if fill_w > 0:
+                draw.rounded_rectangle(
+                    [mx0, meter_y0, mx0 + fill_w, meter_y0 + meter_h],
+                    radius=5 if is_very_tall else 4,
+                    fill="black",
+                )
+
+            font_meter = get_font(10, bold=False)
+            draw.text(
+                (mx0, meter_y0 + meter_h + 3), "0%", fill="#777777", font=font_meter
+            )
+            draw.text(
+                (mx0 + meter_w // 2 - 8, meter_y0 + meter_h + 3),
+                "50%",
+                fill="#777777",
+                font=font_meter,
+            )
+            draw.text(
+                (mx1 - 24, meter_y0 + meter_h + 3),
+                "100%",
+                fill="#777777",
+                font=font_meter,
+            )
+
+            if is_very_tall:
+                if prob >= 70:
+                    p_note = "Precipitation highly likely"
+                elif prob >= 40:
+                    p_note = "Scattered showers possible"
+                elif prob >= 20:
+                    p_note = "Isolated slight chance"
+                else:
+                    p_note = "Dry commute expected"
+                draw.text(
+                    (mx0, meter_y0 + meter_h + 26),
+                    p_note,
+                    fill="#222222",
+                    font=get_font(12, bold=True),
+                )
+
+            bot_y0 = rect.y1 - 38
+            bot_y1 = rect.y1 - 10
             if prob < 20:
                 p_text = "DRY CONDITIONS"
                 bg_col = "#f4f4f4"
@@ -880,19 +954,24 @@ class WeatherHeroWidget(Widget):
             )
             return
 
-        body_top = rect.y0 + pill_h + 12
-        icon_size = 72 if rect.h >= 180 else 52
+        body_top = rect.y0 + pill_h + (14 if rect.h >= 240 else 12)
+        is_tall_hero = rect.h >= 240
+        icon_size = 84 if is_tall_hero else (72 if rect.h >= 180 else 52)
         draw_weather_icon(
             draw,
-            rect.x0 + 16,
+            rect.x0 + (18 if is_tall_hero else 16),
             body_top - 2,
             size=icon_size,
             glyph=wx.condition_glyph,
         )
 
         # Temperature
-        font_temp = get_font(60 if rect.h >= 180 else 48, bold=True)
-        font_deg = get_font(24 if rect.h >= 180 else 20, bold=True)
+        font_temp = get_font(
+            72 if is_tall_hero else (60 if rect.h >= 180 else 48), bold=True
+        )
+        font_deg = get_font(
+            28 if is_tall_hero else (24 if rect.h >= 180 else 20), bold=True
+        )
         temp_x = rect.x0 + icon_size + 24
         temp_str = f"{wx.temp}"
         draw.text((temp_x, body_top - 6), temp_str, fill="black", font=font_temp)
@@ -901,24 +980,105 @@ class WeatherHeroWidget(Widget):
         draw.text((temp_x + tw + 2, body_top), "°F", fill="black", font=font_deg)
 
         # Condition & High/Low right of temperature
-        hl_x = temp_x + tw + 44
-        font_cond = get_font(18, bold=True)
-        font_detail_bold = get_font(13, bold=True)
+        hl_x = temp_x + tw + (40 if is_tall_hero else 44)
+        font_cond = get_font(22 if is_tall_hero else 18, bold=True)
+        font_detail_bold = get_font(14 if is_tall_hero else 13, bold=True)
         draw.text((hl_x, body_top + 4), wx.condition, fill="black", font=font_cond)
         draw.text(
-            (hl_x, body_top + 28),
+            (hl_x, body_top + (34 if is_tall_hero else 28)),
             f"High: {wx.temp_max}°  •  Low: {wx.temp_min}°",
             fill="#333333",
             font=font_detail_bold,
         )
 
-        # Metrics row
-        metrics_y = body_top + 78
-        font_detail = get_font(13, bold=False)
-        metrics_str = f"Feels like {wx.apparent_temp}°   •   Humidity: {wx.humidity}%   •   Wind: {wx.wind_speed} mph"
-        draw.text(
-            (rect.x0 + 18, metrics_y), metrics_str, fill="#444444", font=font_detail
-        )
+        if is_tall_hero:
+            # Divider below hero section
+            div_y = body_top + icon_size + 14
+            draw.line(
+                [(rect.x0 + 16, div_y), (rect.x1 - 16, div_y)],
+                fill="#e0e0e0",
+                width=1,
+            )
+
+            # 3-column telemetry grid
+            stat_y = div_y + 12
+            col_w = (rect.w - 32) // 3
+            c0_x = rect.x0 + 16
+            c1_x = c0_x + col_w
+            c2_x = c1_x + col_w
+
+            font_stat_lbl = get_font(11, bold=True)
+            font_stat_val = get_font(30, bold=True)
+            font_stat_sub = get_font(12, bold=False)
+
+            # Col 0: Feels like
+            draw.text(
+                (c0_x + 2, stat_y), "FEELS LIKE", fill="#666666", font=font_stat_lbl
+            )
+            draw.text(
+                (c0_x + 2, stat_y + 18),
+                f"{wx.apparent_temp}°",
+                fill="black",
+                font=font_stat_val,
+            )
+            draw.text(
+                (c0_x + 2, stat_y + 56),
+                f"Range: {wx.temp_min}°–{wx.temp_max}°",
+                fill="#777777",
+                font=font_stat_sub,
+            )
+
+            # Col 1: Humidity
+            draw.line(
+                [(c1_x - 6, div_y + 10), (c1_x - 6, div_y + 78)],
+                fill="#e8e8e8",
+                width=1,
+            )
+            draw.text(
+                (c1_x + 8, stat_y), "HUMIDITY", fill="#666666", font=font_stat_lbl
+            )
+            draw.text(
+                (c1_x + 8, stat_y + 18),
+                f"{wx.humidity}%",
+                fill="black",
+                font=font_stat_val,
+            )
+            draw.text(
+                (c1_x + 8, stat_y + 56),
+                "Relative moisture",
+                fill="#777777",
+                font=font_stat_sub,
+            )
+
+            # Col 2: Wind
+            draw.line(
+                [(c2_x - 6, div_y + 10), (c2_x - 6, div_y + 78)],
+                fill="#e8e8e8",
+                width=1,
+            )
+            draw.text(
+                (c2_x + 8, stat_y), "WIND SPEED", fill="#666666", font=font_stat_lbl
+            )
+            draw.text(
+                (c2_x + 8, stat_y + 18),
+                f"{wx.wind_speed} mph",
+                fill="black",
+                font=font_stat_val,
+            )
+            draw.text(
+                (c2_x + 8, stat_y + 56),
+                "Hudson waterfront",
+                fill="#777777",
+                font=font_stat_sub,
+            )
+        else:
+            # Metrics row for compact card
+            metrics_y = body_top + 78
+            font_detail = get_font(13, bold=False)
+            metrics_str = f"Feels like {wx.apparent_temp}°   •   Humidity: {wx.humidity}%   •   Wind: {wx.wind_speed} mph"
+            draw.text(
+                (rect.x0 + 18, metrics_y), metrics_str, fill="#444444", font=font_detail
+            )
 
         # Bottom decision / status advisory banner
         if rect.h >= 180:
@@ -932,13 +1092,13 @@ class WeatherHeroWidget(Widget):
                 width=1,
             )
             if wx.precip_prob >= 50:
-                status_text = "⚠️ RAIN EXPECTED TODAY • CARRY UMBRELLA"
+                status_text = "▲ RAIN EXPECTED TODAY • CARRY UMBRELLA"
             elif wx.wind_speed >= 15:
-                status_text = "💨 BREEZY ALONG THE HUDSON WATERFRONT"
+                status_text = "● BREEZY ALONG THE HUDSON WATERFRONT"
             elif wx.temp <= 38:
-                status_text = "❄️ CHILLY COMMUTE • WINTER COAT RECOMMENDED"
+                status_text = "● CHILLY COMMUTE • WINTER COAT RECOMMENDED"
             elif wx.temp >= 85:
-                status_text = "☀️ HIGH HEAT • STAY HYDRATED & COOL"
+                status_text = "● HIGH HEAT • STAY HYDRATED & COOL"
             else:
                 status_text = "● FAVORABLE COMMUTE CONDITIONS IN HOBOKEN"
 
@@ -960,6 +1120,7 @@ class WeatherForecastWidget(Widget):
         self.border = border
 
     def render(self, draw: Any, rect: Rect, ctx: RenderContext) -> None:
+        is_tall = rect.h >= 140
         if self.border:
             draw.rounded_rectangle(
                 [rect.x0, rect.y0, rect.x1, rect.y1],
@@ -968,7 +1129,7 @@ class WeatherForecastWidget(Widget):
                 outline="black",
                 width=2,
             )
-            banner_h = 24
+            banner_h = 28 if is_tall else 24
             draw.rounded_rectangle(
                 [rect.x0, rect.y0, rect.x1, rect.y0 + banner_h],
                 radius=10,
@@ -977,7 +1138,12 @@ class WeatherForecastWidget(Widget):
                 width=2,
             )
             draw.rectangle(
-                [rect.x0 + 1, rect.y0 + 12, rect.x1 - 1, rect.y0 + banner_h],
+                [
+                    rect.x0 + 1,
+                    rect.y0 + (14 if is_tall else 12),
+                    rect.x1 - 1,
+                    rect.y0 + banner_h,
+                ],
                 fill="#f4f4f4",
             )
             draw.line(
@@ -985,11 +1151,15 @@ class WeatherForecastWidget(Widget):
                 fill="black",
                 width=1,
             )
+            banner_title = f"{self.days}-DAY OUTLOOK • MILE SQUARE EXTENDED FORECAST"
             draw.text(
-                (rect.x0 + 14, rect.y0 + 5),
-                "4-DAY OUTLOOK • MILE SQUARE EXTENDED FORECAST",
+                (
+                    rect.x0 + 16 if is_tall else rect.x0 + 14,
+                    rect.y0 + (7 if is_tall else 5),
+                ),
+                banner_title,
                 fill="#444444",
-                font=get_font(11, bold=True),
+                font=get_font(12 if is_tall else 11, bold=True),
             )
             fc_body_y0 = rect.y0 + banner_h
         else:
@@ -1004,50 +1174,59 @@ class WeatherForecastWidget(Widget):
         count = len(items)
         col_w = rect.w // count
 
-        font_day = get_font(13, bold=True)
-        font_cond = get_font(11, bold=False)
-        font_hl = get_font(13, bold=True)
-        font_precip = get_font(11, bold=True)
+        font_day = get_font(14 if is_tall else 13, bold=True)
+        font_cond = get_font(12 if is_tall else 11, bold=False)
+        font_hl = get_font(16 if is_tall else 13, bold=True)
+        font_precip = get_font(12 if is_tall else 11, bold=True)
 
         for i, f in enumerate(items):
             cx0 = rect.x0 + i * col_w
             if i > 0:
                 draw.line(
-                    [(cx0, fc_body_y0 + 6), (cx0, rect.y1 - 6)],
+                    [
+                        (cx0, fc_body_y0 + 8 if is_tall else fc_body_y0 + 6),
+                        (cx0, rect.y1 - (8 if is_tall else 6)),
+                    ],
                     fill="#dddddd",
                     width=1,
                 )
 
             # Day name
             draw.text(
-                (cx0 + 14, fc_body_y0 + 8),
+                (cx0 + (16 if is_tall else 14), fc_body_y0 + (12 if is_tall else 8)),
                 f.day_name.upper(),
                 fill="black",
                 font=font_day,
             )
 
             # Weather icon
-            icon_s = 46 if rect.h >= 100 else 36
+            icon_s = 56 if is_tall else (46 if rect.h >= 100 else 36)
             draw_weather_icon(
                 draw,
-                cx0 + 12,
-                fc_body_y0 + 26,
+                cx0 + (14 if is_tall else 12),
+                fc_body_y0 + (38 if is_tall else 26),
                 size=icon_s,
                 glyph=f.condition_glyph,
             )
 
             # High / Low
+            text_x = cx0 + (78 if is_tall else 66)
             draw.text(
-                (cx0 + 66, fc_body_y0 + 26),
+                (text_x, fc_body_y0 + (38 if is_tall else 26)),
                 f"{f.temp_max}° / {f.temp_min}°",
                 fill="black",
                 font=font_hl,
             )
 
             # Condition
-            cond_short = ellipsize_to_width(draw, f.condition, font_cond, col_w - 74)
+            cond_short = ellipsize_to_width(
+                draw, f.condition, font_cond, col_w - (86 if is_tall else 74)
+            )
             draw.text(
-                (cx0 + 66, fc_body_y0 + 44), cond_short, fill="#555555", font=font_cond
+                (text_x, fc_body_y0 + (64 if is_tall else 44)),
+                cond_short,
+                fill="#555555",
+                font=font_cond,
             )
 
             # Rain probability
@@ -1057,7 +1236,7 @@ class WeatherForecastWidget(Widget):
                 else "0% rain"
             )
             draw.text(
-                (cx0 + 66, fc_body_y0 + 60),
+                (text_x, fc_body_y0 + (86 if is_tall else 60)),
                 rain_str,
                 fill="#111111",
                 font=font_precip,

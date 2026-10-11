@@ -139,11 +139,15 @@ class TestDashboardDSL(unittest.TestCase):
         hero = WeatherHeroWidget()
         hero.render(self.draw, Rect(20, 20, 500, 200), self.ctx)
 
+        # Weather hero on tall display (Kindle PW5)
+        hero.render(self.draw, Rect(20, 20, 520, 320), self.ctx)
+
         # Weather hero with high precip advisory
         wx_rain = get_mock_weather_data()
         object.__setattr__(wx_rain, "precip_prob", 75)
         ctx_rain = RenderContext(now=datetime.now(), weather_data=wx_rain)
         hero.render(self.draw, Rect(20, 20, 500, 200), ctx_rain)
+        hero.render(self.draw, Rect(20, 20, 520, 320), ctx_rain)
 
         # Weather hero with wind advisory
         wx_wind = get_mock_weather_data()
@@ -151,6 +155,7 @@ class TestDashboardDSL(unittest.TestCase):
         object.__setattr__(wx_wind, "wind_speed", 22)
         ctx_wind = RenderContext(now=datetime.now(), weather_data=wx_wind)
         hero.render(self.draw, Rect(20, 20, 500, 200), ctx_wind)
+        hero.render(self.draw, Rect(20, 20, 520, 320), ctx_wind)
 
         # Weather hero with cold advisory
         wx_cold = get_mock_weather_data()
@@ -159,6 +164,7 @@ class TestDashboardDSL(unittest.TestCase):
         object.__setattr__(wx_cold, "temp", 32)
         ctx_cold = RenderContext(now=datetime.now(), weather_data=wx_cold)
         hero.render(self.draw, Rect(20, 20, 500, 200), ctx_cold)
+        hero.render(self.draw, Rect(20, 20, 520, 320), ctx_cold)
 
         # Weather hero with heat advisory
         wx_hot = get_mock_weather_data()
@@ -167,9 +173,11 @@ class TestDashboardDSL(unittest.TestCase):
         object.__setattr__(wx_hot, "temp", 92)
         ctx_hot = RenderContext(now=datetime.now(), weather_data=wx_hot)
         hero.render(self.draw, Rect(20, 20, 500, 200), ctx_hot)
+        hero.render(self.draw, Rect(20, 20, 520, 320), ctx_hot)
 
-        # Forecast with border and without border
+        # Forecast with border and without border (tall and compact)
         forecast = WeatherForecastWidget(days=4, border=True)
+        forecast.render(self.draw, Rect(20, 180, 780, 360), self.ctx)
         forecast.render(self.draw, Rect(20, 180, 780, 290), self.ctx)
 
         forecast_noborder = WeatherForecastWidget(days=3, border=False)
@@ -188,15 +196,24 @@ class TestDashboardDSL(unittest.TestCase):
             title="PRECIPITATION", source="precip_prob", unit="%", badge="RADAR"
         )
         card_dry.render(self.draw, Rect(20, 20, 240, 240), self.ctx)
+        card_dry.render(self.draw, Rect(20, 20, 240, 300), self.ctx)
 
-        # Mid probability tier
+        # Mid probability tier (compact and very tall)
         wx_mid = get_mock_weather_data()
         object.__setattr__(wx_mid, "precip_prob", 40)
         ctx_mid = RenderContext(now=datetime.now(), weather_data=wx_mid)
         card_dry.render(self.draw, Rect(20, 20, 240, 240), ctx_mid)
+        card_dry.render(self.draw, Rect(20, 20, 240, 300), ctx_mid)
+
+        # Low probability tier (isolated slight chance)
+        wx_low = get_mock_weather_data()
+        object.__setattr__(wx_low, "precip_prob", 25)
+        ctx_low = RenderContext(now=datetime.now(), weather_data=wx_low)
+        card_dry.render(self.draw, Rect(20, 20, 240, 300), ctx_low)
 
         # High probability tier
         card_dry.render(self.draw, Rect(20, 20, 240, 240), ctx_rain)
+        card_dry.render(self.draw, Rect(20, 20, 240, 300), ctx_rain)
 
     def test_transit_widgets(self):
         bus_bar = BusBarWidget()

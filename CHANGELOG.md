@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.39.5] - 2026-10-11
+
+### Changed
+
+- **Weather Dashboard Dead Space Elimination & Responsive Scaling** (`server/dashboard_dsl.py`, `server/dashboards.py`, `config/dashboards/weather.json`):
+  - **Eliminated Dead Space on Native Kindle Paperwhite (800×600 / 1648×1236)**: Synchronized `config/dashboards/weather.json` and `_builtin_weather_spec` with exact fixed heights on header (`62px`) and button bar (`42px`), allocating proportional flex height (`1.7` : `1.0`) between the hero/radar row and the extended forecast strip.
+  - **3-Column Telemetry Grid on Weather Hero**: On tall displays (`rect.h >= 240`), upgraded `WeatherHeroWidget` with larger vector iconography (`84px`), larger temperature typography (`72pt`), a horizontal dividing rule, and a dedicated 3-column telemetry grid (`FEELS LIKE`, `HUMIDITY`, `WIND SPEED`) with vertical dividers and daily temperature range context.
+  - **Visual Precipitation Gauge on Radar Card**: Enhanced `MetricCardWidget` on tall screens with a proportional e-ink progress gauge (`0%`, `50%`, `100%` scale), larger umbrella glyph (`64px`), 56pt percentage readout, likelihood status description (`Precipitation highly likely`, `Scattered showers possible`, `Dry commute expected`), and horizontally aligned divider rule.
+  - **Extended Forecast Breathing Room**: Converted `WeatherForecastWidget` to flex height, allowing the extended forecast strip to expand comfortably (`173px` on PW5 vs `128px` on 480p) with 56px weather icons, 16pt bold temperatures, legible condition text, and dynamic N-day banner headers.
+  - **Cross-Platform Tofu Elimination**: Replaced Unicode emoji glyphs in the commute advisory banner with crisp vector/standard geometric glyphs (`▲`, `●`) to guarantee clean, sharp rendering without missing glyph boxes on embedded Linux and e-ink displays.
+
+---
+
 ## [1.39.4] - 2026-10-11
 
 ### Added

@@ -264,7 +264,7 @@ def _builtin_weather_spec() -> DashboardSpec:
             },
             {
                 "type": "hstack",
-                "flex": 2.2,
+                "flex": 1.7,
                 "gap": 14,
                 "children": [
                     {
@@ -285,7 +285,7 @@ def _builtin_weather_spec() -> DashboardSpec:
             },
             {
                 "type": "weather_forecast",
-                "height": 108,
+                "flex": 1.0,
                 "days": 4,
             },
             {
