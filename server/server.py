@@ -498,7 +498,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         if params:
             if "client_id" in params or "id" in params:
                 return True
-            if "kindle" in params or "batt" in params or "battery" in params:
+            if "batt" in params or "battery" in params:
                 return True
         return False
 
@@ -1482,6 +1482,27 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
         elif parsed.path in ["/", "/index.html"]:
             current_view = html.escape(params.get("view", ["auto"])[0])
+            raw_screen = (
+                params.get("screen", params.get("kindle", ["pw5"]))[0].lower().strip()
+            )
+            screen_mode = "standard" if raw_screen in ("standard", "800x480") else "pw5"
+            use_mock = "mock" in params
+            mock_suffix = "&amp;mock=1" if use_mock else ""
+            mock_query = "&amp;mock=1" if use_mock else ""
+            present_val = params.get("present", [None])[0]
+            present_query = (
+                f"&amp;present={html.escape(present_val.lower().strip())}"
+                if present_val
+                and present_val.lower().strip() in ("interactive", "idle", "dormant")
+                else ""
+            )
+            screen_query = f"&amp;screen={screen_mode}" if screen_mode != "pw5" else ""
+
+            if screen_mode == "standard":
+                dashboard_img_src = f"/dashboard.png?view={current_view}{present_query}{mock_suffix}&amp;t={int(time.time())}"
+            else:
+                dashboard_img_src = f"/dashboard.png?kindle=pw5&amp;rotate=0&amp;view={current_view}{present_query}{mock_suffix}&amp;t={int(time.time())}"
+
             status_badge = (
                 '<span style="color:#ff6b6b;">STOPPED</span>'
                 if tracker_stopped
@@ -1666,7 +1687,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 else ""
             )
             view_links = [
-                f'<a href="/?view=auto"{auto_style}>Auto (AM Citi / PM Bus)</a>'
+                f'<a href="/?view=auto{screen_query}{present_query}{mock_query}"{auto_style}>Auto (AM Citi / PM Bus)</a>'
             ]
             for dash_spec in REGISTRY.list_all():
                 is_cur = current_view == dash_spec.id
@@ -1676,9 +1697,19 @@ class DashboardHandler(BaseHTTPRequestHandler):
                     else ""
                 )
                 view_links.append(
-                    f'<a href="/?view={dash_spec.id}"{style_attr}>{html.escape(dash_spec.title)}</a>'
+                    f'<a href="/?view={dash_spec.id}{screen_query}{present_query}{mock_query}"{style_attr}>{html.escape(dash_spec.title)}</a>'
                 )
             views_html = " | ".join(view_links)
+            pw5_style = (
+                ' style="font-weight:bold;text-decoration:underline;"'
+                if screen_mode == "pw5"
+                else ""
+            )
+            std_style = (
+                ' style="font-weight:bold;text-decoration:underline;"'
+                if screen_mode != "pw5"
+                else ""
+            )
 
             script_nonce = secrets.token_hex(16)
 
@@ -1713,6 +1744,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
         }}
         img {{
             max-width: 95vw;
+            max-height: 82vh;
+            width: auto;
+            height: auto;
+            object-fit: contain;
             box-shadow: 0 8px 24px rgba(0,0,0,0.5);
             border-radius: 8px;
         }}
@@ -1895,7 +1930,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
 </head>
 
 <body>
-    <img src="/dashboard.png?view={current_view}&amp;t={int(time.time())}" alt="Transit Dashboard" />
+    <img src="{dashboard_img_src}" alt="Transit Dashboard" />
     <div class="status">Status: {status_badge}{batt_html}{phase_html}</div>
     <div class="controls">
         <input type="password" id="tokenInput" placeholder="Control Token" />
@@ -1910,9 +1945,15 @@ class DashboardHandler(BaseHTTPRequestHandler):
         {views_html}
     </div>
     <div class="links">
-        <a href="/dashboard.png?view={current_view}" target="_blank">Standard (800x480)</a> |
-        <a href="/dashboard.png?kindle=pw5&amp;rotate=90&amp;view={current_view}" target="_blank">Kindle PW5 (Rotated 90°)</a> |
-        <a href="/dashboard.png?mock=1&amp;view={current_view}" target="_blank">Mock Preview</a>
+        <strong>Resolution:</strong>
+        <a href="/?view={current_view}&amp;screen=pw5{present_query}{mock_query}"{pw5_style}>Kindle PW5 Native (1648x1236)</a> |
+        <a href="/?view={current_view}&amp;screen=standard{present_query}{mock_query}"{std_style}>Standard (800x480)</a>
+    </div>
+    <div class="links">
+        <a href="/dashboard.png?kindle=pw5&amp;rotate=0&amp;view={current_view}{present_query}" target="_blank">Kindle PW5 Full Res (1648x1236)</a> |
+        <a href="/dashboard.png?kindle=pw5&amp;rotate=90&amp;view={current_view}{present_query}" target="_blank">Kindle PW5 (Rotated 90°)</a> |
+        <a href="/dashboard.png?view={current_view}{present_query}" target="_blank">Standard (800x480)</a> |
+        <a href="/dashboard.png?kindle=pw5&amp;rotate=0&amp;mock=1&amp;view={current_view}" target="_blank">Mock Preview</a>
     </div>
 
     <div class="schedule-section">

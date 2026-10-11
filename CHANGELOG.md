@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.39.3] - 2026-10-11
+
+### Changed
+
+- **Desktop Web Dashboard Full-Resolution Kindle Screen by Default** (`server/server.py`):
+  - Upgraded the desktop web dashboard view (`GET /` and `GET /index.html`) to default to the native Kindle Paperwhite 5 high-DPI display resolution (1648×1236, `scale=2.06`, `rotate=0`, unrotated landscape) rather than the compact 800×480 screen.
+  - Added responsive CSS scaling (`max-height: 82vh`, `max-width: 95vw`, `object-fit: contain`) so the 1648×1236 dashboard comfortably fits laptop and desktop viewports without excessive vertical scrolling while retaining 300 PPI clarity.
+  - Added a **Resolution** switcher (`Kindle PW5 Native (1648x1236)` vs `Standard (800x480)`) and direct image links for both native landscape and hardware-rotated portrait buffers.
+  - Propagated `screen`, `present`, and `mock` query parameters across the View Mode switcher links (`Auto`, `Morning`, `Evening`, `Weather`, etc.).
+  - Preserved browser preview fleet isolation: browser previews fetching full-resolution Kindle images without telemetry do not register dummy devices in the fleet registry.
+
+---
+
 ## [1.39.2] - 2026-10-11
 
 ### Added

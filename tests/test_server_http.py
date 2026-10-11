@@ -891,22 +891,48 @@ class TestMultiDeviceWebInterface(ServerHTTPTestBase):
         # Default view
         status, _, body = _http_get(self.port, "/")
         self.assertEqual(status, 200)
-        self.assertIn(b'<img src="/dashboard.png?view=auto&amp;t=', body)
+        self.assertIn(
+            b'<img src="/dashboard.png?kindle=pw5&amp;rotate=0&amp;view=auto&amp;t=',
+            body,
+        )
         self.assertIn(b'Status: <span style="color:#51cf66;">ACTIVE</span>', body)
         self.assertIn(b"Auto (AM Citi / PM Bus)", body)
         self.assertIn(b"Morning (Citi Bike Hero)", body)
         self.assertIn(b"Evening (Bus Hero)", body)
         self.assertIn(b"Standard (800x480)", body)
         self.assertIn(b"Kindle PW5 (Rotated 90\xc2\xb0)", body)
+        self.assertIn(b"Kindle PW5 Native (1648x1236)", body)
 
         # View switcher parameter propagation
         status_m, _, body_m = _http_get(self.port, "/?view=morning")
         self.assertEqual(status_m, 200)
-        self.assertIn(b'<img src="/dashboard.png?view=morning&amp;t=', body_m)
+        self.assertIn(
+            b'<img src="/dashboard.png?kindle=pw5&amp;rotate=0&amp;view=morning&amp;t=',
+            body_m,
+        )
 
         status_e, _, body_e = _http_get(self.port, "/index.html?view=evening")
         self.assertEqual(status_e, 200)
-        self.assertIn(b'<img src="/dashboard.png?view=evening&amp;t=', body_e)
+        self.assertIn(
+            b'<img src="/dashboard.png?kindle=pw5&amp;rotate=0&amp;view=evening&amp;t=',
+            body_e,
+        )
+
+        # Explicit screen mode toggle for standard 800x480 resolution
+        status_s, _, body_s = _http_get(self.port, "/?screen=standard&view=morning")
+        self.assertEqual(status_s, 200)
+        self.assertIn(b'<img src="/dashboard.png?view=morning&amp;t=', body_s)
+        self.assertIn(b'<a href="/?view=morning&amp;screen=standard"', body_s)
+
+        # Presentation and mock parameter propagation
+        status_p, _, body_p = _http_get(
+            self.port, "/?view=morning&present=interactive&mock=1"
+        )
+        self.assertEqual(status_p, 200)
+        self.assertIn(
+            b'<img src="/dashboard.png?kindle=pw5&amp;rotate=0&amp;view=morning&amp;present=interactive&amp;mock=1&amp;t=',
+            body_p,
+        )
 
     def test_csp_nonce_and_script_security(self):
         status, headers, body = _http_get(self.port, "/")
@@ -1151,7 +1177,14 @@ class TestFleetTelemetryAndBrowserIsolation(ServerHTTPTestBase):
         self.assertEqual(status, 200)
         self.assertEqual(len(server.get_device_registry().list_devices()), 0)
 
-        # 2. Web browser loads embedded dashboard image
+        # 2. Web browser loads embedded dashboard image (default Kindle PW5 and standard)
+        status_img_k, _, _ = _http_get(
+            self.port,
+            "/dashboard.png?kindle=pw5&rotate=0&view=auto&t=1791665695&mock=1",
+        )
+        self.assertEqual(status_img_k, 200)
+        self.assertEqual(len(server.get_device_registry().list_devices()), 0)
+
         status_img, _, _ = _http_get(
             self.port, "/dashboard.png?view=auto&t=1791665695&mock=1"
         )
