@@ -65,14 +65,23 @@ func (tc *TrackerClient) configureGestureHandlers(gd *GestureDetector, cancel co
 		tc.logRemote(fmt.Sprintf("CITI BIKE button tapped at (%d, %d)! View set to: %s. Refreshing...", x, y, newMode))
 		refresh()
 	}
-	gd.OnLightTap = func(x, y int32) {
+	gd.OnWeatherTap = func(x, y int32) {
+		// The view choice itself arms the hold and fast poll (EvViewTap).
+		tc.dataInteraction()
+		newMode := tc.setExplicitViewMode("weather")
+		tc.logRemote(fmt.Sprintf("WEATHER button tapped at (%d, %d)! View set to: %s. Refreshing...", x, y, newMode))
+		refresh()
+	}
+	brightnessHandler := func(x, y int32) {
 		// Screen-only action: no fast-poll hold (see OnSingleTap). The lipc calls
 		// inside are individually bounded by lipcCallTimeout, so a slow powerd
 		// can stall the dispatcher at most briefly.
 		tc.noteTouch()
-		tc.logRemote(fmt.Sprintf("LIGHT button tapped at (%d, %d)! Cycling frontlight...", x, y))
+		tc.logRemote(fmt.Sprintf("BRIGHTNESS button tapped at (%d, %d)! Cycling frontlight...", x, y))
 		tc.cycleFrontlight()
 	}
+	gd.OnBrightnessTap = brightnessHandler
+	gd.OnLightTap = brightnessHandler
 	gd.OnRefreshTap = func(x, y int32) {
 		tc.dataInteraction()
 		tc.logRemote(fmt.Sprintf("REFRESH button tapped at (%d, %d)! Refreshing...", x, y))

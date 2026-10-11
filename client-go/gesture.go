@@ -10,10 +10,16 @@ const DesignWidth = 800
 
 // GestureDetectorConfig specifies thresholds and timing windows for gesture recognition
 type GestureDetectorConfig struct {
-	BottomBarThresholdY   int32
-	ButtonBusesThresholdX int32
-	ButtonBikesThresholdX int32
-	ButtonLightThresholdX int32
+	BottomBarThresholdY     int32
+	ButtonBusesThresholdX   int32
+	ButtonBikesThresholdX   int32
+	ButtonWeatherThresholdX int32
+	ButtonLightThresholdX   int32 // Backward-compatible alias for ButtonWeatherThresholdX
+
+	// Brightness toggle button zone (top-right, immediately left of time & date)
+	BrightnessXMin int32
+	BrightnessXMax int32
+	BrightnessYMax int32
 
 	TopRightThresholdX   int32
 	TopRightThresholdY   int32
@@ -40,14 +46,20 @@ func DefaultGestureConfig() GestureDetectorConfig {
 		InactivityTimeout: 100 * time.Millisecond,
 		DebounceDuration:  80 * time.Millisecond,
 		// Bottom button bar (design y ~= 556..590 for a 600-tall layout). Four
-		// buttons: BUSES | CITI BIKE | LIGHT | REFRESH. Column boundaries mirror
+		// buttons: BUSES | CITI BIKE | WEATHER | REFRESH. Column boundaries mirror
 		// draw_bottom_button_bar (start_x=20, gap=10, col_w=182).
-		BottomBarThresholdY:   556,
-		ButtonBusesThresholdX: 202,
-		ButtonBikesThresholdX: 394,
-		ButtonLightThresholdX: 586,
+		BottomBarThresholdY:     556,
+		ButtonBusesThresholdX:   202,
+		ButtonBikesThresholdX:   394,
+		ButtonWeatherThresholdX: 586,
+		ButtonLightThresholdX:   586,
+		// Top-right brightness toggle button (immediately left of time & date, ~610..640, y ~16..46).
+		// Dedicated touch zone sized generously for finger taps.
+		BrightnessXMin: 580,
+		BrightnessXMax: 660,
+		BrightnessYMax: 70,
 		// Corner zones in design space.
-		TopRightThresholdX:   640,
+		TopRightThresholdX:   660,
 		TopRightThresholdY:   120,
 		TopLeftThresholdX:    160,
 		TopLeftThresholdY:    120,
@@ -78,6 +90,8 @@ type GestureDetector struct {
 	OnBottomLeftTap func(x, y int32)
 	OnBusesTap      func(x, y int32)
 	OnBikesTap      func(x, y int32)
+	OnWeatherTap    func(x, y int32)
+	OnBrightnessTap func(x, y int32)
 	OnLightTap      func(x, y int32)
 	OnRefreshTap    func(x, y int32)
 	OnLog           func(msg string)
@@ -118,6 +132,11 @@ func (gd *GestureDetector) TriggerTap(now time.Time) {
 		}
 		gd.lastTapTime = time.Time{}
 
+		weatherThreshold := gd.cfg.ButtonWeatherThresholdX
+		if weatherThreshold == 0 {
+			weatherThreshold = gd.cfg.ButtonLightThresholdX
+		}
+
 		switch {
 		case x < gd.cfg.ButtonBusesThresholdX:
 			if gd.OnBusesTap != nil {
@@ -131,8 +150,10 @@ func (gd *GestureDetector) TriggerTap(now time.Time) {
 			} else if gd.OnBottomLeftTap != nil {
 				cb = gd.OnBottomLeftTap
 			}
-		case x < gd.cfg.ButtonLightThresholdX:
-			if gd.OnLightTap != nil {
+		case x < weatherThreshold:
+			if gd.OnWeatherTap != nil {
+				cb = gd.OnWeatherTap
+			} else if gd.OnLightTap != nil {
 				cb = gd.OnLightTap
 			}
 		default:
@@ -147,7 +168,25 @@ func (gd *GestureDetector) TriggerTap(now time.Time) {
 		return
 	}
 
-	// 2. Corner Touch Gestures (Dedicated Action Zones)
+	// 2. Top-Right Brightness Toggle Button Tap (Immediately Left of Time & Date)
+	if gd.cfg.BrightnessXMin > 0 && x >= gd.cfg.BrightnessXMin && x <= gd.cfg.BrightnessXMax && y <= gd.cfg.BrightnessYMax {
+		if gd.singleTapTimer != nil {
+			gd.singleTapTimer.Stop()
+		}
+		gd.lastTapTime = time.Time{}
+		if gd.OnBrightnessTap != nil {
+			cb = gd.OnBrightnessTap
+		} else if gd.OnLightTap != nil {
+			cb = gd.OnLightTap
+		}
+		gd.mu.Unlock()
+		if cb != nil {
+			cb(x, y)
+		}
+		return
+	}
+
+	// 3. Corner Touch Gestures (Dedicated Action Zones)
 	// Top-Right Corner Tap -> Refresh
 	if x > gd.cfg.TopRightThresholdX && y < gd.cfg.TopRightThresholdY {
 		if gd.singleTapTimer != nil {

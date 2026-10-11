@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.39.1] - 2026-10-11
+
+### Changed
+
+- **Top-Right Header Brightness Toggle** (`server/canvas.py`, `server/morning_view.py`, `server/evening_view.py`, `server/dashboard_dsl.py`): Moved frontlight brightness toggle to the top-right header, positioned immediately to the left of the time and date in a compact button with crisp sun-like iconography (central disc and 8 radial rays scaled natively via `ScaledDraw.ellipse`). Supported across morning, evening, and modular DSL dashboards with `show_brightness` toggle.
+- **Bottom Bar Weather Dashboard Button** (`server/canvas.py`, `server/dashboard_dsl.py`, `client-go/gesture.go`, `client-go/input.go`): Replaced the bottom button bar's brightness button with a dedicated `WEATHER` view button (`[ BUSES ] [ CITI BIKE ] [ WEATHER ] [ ↻ REFRESH ]`). Active view is highlighted with inverted fill when displaying the weather dashboard.
+- **Kindle Gesture Routing for Weather and Brightness** (`client-go/gesture.go`, `client-go/input.go`): Added `OnWeatherTap` to switch to `weather` view upon bottom bar tap, and `OnBrightnessTap` (with `OnLightTap` compatibility) to trigger frontlight cycling upon tapping the top-right brightness button zone.
+
+---
+
 ## [1.39.0] - 2026-10-11
 
 ### Added

@@ -202,6 +202,7 @@ func TestConfigureGestureHandlers_WiresViewAndRefresh(t *testing.T) {
 	tc.configureGestureHandlers(gd, cancel)
 
 	if gd.OnBusesTap == nil || gd.OnBikesTap == nil ||
+		gd.OnWeatherTap == nil || gd.OnBrightnessTap == nil ||
 		gd.OnLightTap == nil || gd.OnRefreshTap == nil || gd.OnSingleTap == nil ||
 		gd.OnDoubleTap == nil || gd.OnTopLeftTap == nil || gd.OnTopRightTap == nil ||
 		gd.OnBottomLeftTap == nil {
@@ -224,6 +225,17 @@ func TestConfigureGestureHandlers_WiresViewAndRefresh(t *testing.T) {
 	if tc.getViewMode() != "evening" {
 		t.Errorf("buses tap should set evening view, got %s", tc.getViewMode())
 	}
+
+	// Weather button sets weather view and queues a refresh.
+	gd.OnWeatherTap(0, 0)
+	if tc.getViewMode() != "weather" {
+		t.Errorf("weather tap should set weather view, got %s", tc.getViewMode())
+	}
+	select {
+	case <-tc.refreshCh:
+	default:
+		t.Error("weather tap should enqueue a refresh")
+	}
 }
 
 func TestConfigureGestureHandlers_AllButtonsAndCorners(t *testing.T) {
@@ -238,8 +250,9 @@ func TestConfigureGestureHandlers_AllButtonsAndCorners(t *testing.T) {
 
 	tc.configureGestureHandlers(gd, cancel)
 
-	// Light button cycles the frontlight.
+	// Light / Brightness button cycles the frontlight.
 	gd.OnLightTap(0, 0)
+	gd.OnBrightnessTap(0, 0)
 	// Top-left and refresh enqueue refresh signals.
 	gd.OnTopLeftTap(0, 0)
 	gd.OnRefreshTap(0, 0)
@@ -283,6 +296,7 @@ func TestScreenOnlyActionsDoNotArmFastPoll(t *testing.T) {
 	// Frontlight actions are screen-only: they must NOT pin fast polling.
 	gd.OnSingleTap(0, 0)
 	gd.OnLightTap(0, 0)
+	gd.OnBrightnessTap(0, 0)
 	if armed := tc.overlayNow().FastPoll(time.Now()); armed {
 		t.Error("screen-only actions must not arm the fast-poll hold")
 	}

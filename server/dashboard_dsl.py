@@ -14,6 +14,7 @@ from canvas import (
     WIDTH,
     draw_battery_indicator,
     draw_bottom_button_bar,
+    draw_brightness_button,
     draw_header_badge,
     draw_mock_badge,
     draw_status_strip,
@@ -266,6 +267,7 @@ class HeaderWidget(Widget):
         show_time: bool = True,
         show_battery: bool = True,
         show_date: bool = True,
+        show_brightness: bool = True,
     ) -> None:
         self.badge = badge
         self.title = title
@@ -273,6 +275,7 @@ class HeaderWidget(Widget):
         self.show_time = show_time
         self.show_battery = show_battery
         self.show_date = show_date
+        self.show_brightness = show_brightness
 
     def render(self, draw: Any, rect: Rect, ctx: RenderContext) -> None:
         font_title = get_font(21, bold=True)
@@ -290,25 +293,6 @@ class HeaderWidget(Widget):
             time_x = rect.x1 - time_w
             draw.text((time_x, rect.y0 + 2), time_str, fill="black", font=font_time)
 
-        # Battery indicator to left of time
-        batt_x = time_x
-        if self.show_battery and ctx.batt_level is not None:
-            font_batt = get_font(13, bold=True)
-            label = f"{ctx.batt_level}%"
-            bbox = draw.textbbox((0, 0), label, font=font_batt)
-            label_w = bbox[2] - bbox[0]
-            bolt_w = 12 if ctx.is_charging else 0
-            total_batt_w = bolt_w + label_w + 6 + 28 + 3
-            batt_x = int(time_x - total_batt_w - 18)
-            draw_battery_indicator(
-                draw,
-                batt_x,
-                rect.y0 + 3,
-                ctx.batt_level,
-                is_charging=ctx.is_charging,
-                font=font_batt,
-            )
-
         # Date string below time
         date_x = rect.x1
         if self.show_date:
@@ -317,12 +301,41 @@ class HeaderWidget(Widget):
             date_x = rect.x1 - date_w
             draw.text((date_x, rect.y0 + 26), date_str, fill="#555555", font=font_sub)
 
+        # Brightness toggle button immediately to left of time and date
+        time_date_left = min(time_x, date_x)
+        bright_size = 30
+        right_boundary = time_date_left
+        if self.show_brightness:
+            bright_x0 = time_date_left - bright_size - 10
+            draw_brightness_button(draw, bright_x0, rect.y0 + 4, size=bright_size)
+            right_boundary = bright_x0
+
         # Mock badge if applicable
         if ctx.is_mock:
             font_mock = get_font(11, bold=True)
             mw = mock_badge_width(draw, font_mock)
-            mock_x = int(date_x - mw - 10)
+            mock_x = int(right_boundary - mw - 10)
             draw_mock_badge(draw, mock_x, rect.y0 + 23, font=font_mock)
+            right_boundary = mock_x
+
+        # Battery indicator to left of brightness button / mock badge
+        batt_x = right_boundary
+        if self.show_battery and ctx.batt_level is not None:
+            font_batt = get_font(13, bold=True)
+            label = f"{ctx.batt_level}%"
+            bbox = draw.textbbox((0, 0), label, font=font_batt)
+            label_w = bbox[2] - bbox[0]
+            bolt_w = 12 if ctx.is_charging else 0
+            total_batt_w = bolt_w + label_w + 6 + 28 + 3
+            batt_x = int(right_boundary - total_batt_w - 14)
+            draw_battery_indicator(
+                draw,
+                batt_x,
+                rect.y0 + 5,
+                ctx.batt_level,
+                is_charging=ctx.is_charging,
+                font=font_batt,
+            )
 
         # Left badge + title
         bx1 = draw_header_badge(
@@ -593,15 +606,14 @@ class ButtonBarWidget(Widget):
             # Custom buttons provided
             btn_list = self.custom_buttons
         elif ctx.available_views and len(ctx.available_views) > 1:
-            # Generate buttons based on available views
+            # Generate buttons based on available views (up to 3 views + refresh)
             btn_list = []
-            for v in ctx.available_views[:2]:
+            for v in ctx.available_views[:3]:
                 label = v.replace("_", " ").upper()
                 btn_list.append((label, v))
-            btn_list.append(("☼ LIGHT", "light"))
             btn_list.append(("↻ REFRESH", "refresh"))
         else:
-            # Default to standard BUSES and CITI BIKE
+            # Default to standard BUSES, CITI BIKE, and WEATHER
             draw_bottom_button_bar(
                 draw,
                 ctx.width,

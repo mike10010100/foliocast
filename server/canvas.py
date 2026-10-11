@@ -1,3 +1,4 @@
+import math
 import os
 import re
 from typing import Any, Optional
@@ -132,6 +133,22 @@ class ScaledDraw:
     ) -> None:
         self._d.polygon(
             [self._pt(p) for p in xy],
+            fill=fill,
+            outline=outline,
+            width=self._outline(width),
+            **kwargs,
+        )
+
+    def ellipse(
+        self,
+        xy: Any,
+        fill: Any = None,
+        outline: Any = None,
+        width: float = 1,
+        **kwargs: Any,
+    ) -> None:
+        self._d.ellipse(
+            self._box(xy),
             fill=fill,
             outline=outline,
             width=self._outline(width),
@@ -390,6 +407,48 @@ def draw_battery_indicator(
     return (icon_x + bw + term_w) - x
 
 
+def draw_brightness_button(
+    draw: Any,
+    x: int,
+    y: int,
+    size: int = 30,
+) -> tuple[int, int]:
+    """
+    Renders a small tactile brightness toggle button with simple sun-like iconography.
+    Returns (x0, x1) horizontal bounding coordinates.
+    """
+    x0, y0 = x, y
+    x1, y1 = x + size, y + size
+
+    draw.rounded_rectangle(
+        [x0, y0, x1, y1], radius=5, fill="#f4f4f4", outline="black", width=2
+    )
+
+    cx = x0 + size // 2
+    cy = y0 + size // 2
+
+    # Central sun disc
+    r = 4
+    draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill="black")
+
+    # 8 sun rays extending outward
+    ray_in = 6
+    ray_out = 9
+    for deg in (0, 45, 90, 135, 180, 225, 270, 315):
+        rad = math.radians(deg)
+        rx0 = cx + math.cos(rad) * ray_in
+        ry0 = cy + math.sin(rad) * ray_in
+        rx1 = cx + math.cos(rad) * ray_out
+        ry1 = cy + math.sin(rad) * ray_out
+        draw.line(
+            [(int(round(rx0)), int(round(ry0))), (int(round(rx1)), int(round(ry1)))],
+            fill="black",
+            width=1,
+        )
+
+    return x0, x1
+
+
 def draw_bottom_button_bar(
     draw: Any,
     width: int,
@@ -398,8 +457,8 @@ def draw_bottom_button_bar(
     font: Any = None,
 ) -> None:
     """
-    Renders 5 tactile touch buttons across the bottom edge of the dashboard:
-    [ BUSES ] [ CITI BIKE ] [ ☼ LIGHT ] [ ↻ REFRESH ] [ ✕ EXIT ]
+    Renders tactile touch buttons across the bottom edge of the dashboard:
+    [ BUSES ] [ CITI BIKE ] [ WEATHER ] [ ↻ REFRESH ]
     The active view button is highlighted with inverted fill (black fill, white text).
     """
     is_tall = height >= 580
@@ -416,16 +475,14 @@ def draw_bottom_button_bar(
     if font is None:
         font = get_font(12, bold=True)
 
-    is_bus = active_view == "evening"
-    is_bike = active_view == "morning"
+    is_bus = active_view in ("evening", "bus_focus", "buses")
+    is_bike = active_view in ("morning", "citibike_focus", "bikes")
+    is_weather = active_view in ("weather", "weather_view")
 
-    # No EXIT button: on a dedicated dashboard an accidental exit drops the
-    # device to the Kindle Home screen and the client doesn't come back until it
-    # is restarted. Stopping the client is the server's job.
     buttons = [
         ("● BUSES" if is_bus else "BUSES", is_bus),
         ("● CITI BIKE" if is_bike else "CITI BIKE", is_bike),
-        ("☼ LIGHT", False),
+        ("● WEATHER" if is_weather else "WEATHER", is_weather),
         ("↻ REFRESH", False),
     ]
     col_w = (total_w - (len(buttons) - 1) * gap) // len(buttons)

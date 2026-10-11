@@ -8,6 +8,7 @@ from canvas import (
     WIDTH,
     draw_battery_indicator,
     draw_bottom_button_bar,
+    draw_brightness_button,
     draw_header_badge,
     draw_mock_badge,
     ellipsize_to_width,
@@ -59,7 +60,26 @@ def render_morning_view(
     time_x = width - 20 - time_w
     draw.text((time_x, 15), now_time_str, fill="black", font=font_time)
 
-    batt_x = time_x
+    date_bbox = draw.textbbox((0, 0), now_date_str, font=font_header_sub)
+    date_w = date_bbox[2] - date_bbox[0]
+    date_x = width - 20 - date_w
+    draw.text((date_x, 39), now_date_str, fill="#555555", font=font_header_sub)
+
+    # Brightness toggle button immediately to left of time and date
+    time_date_left = min(time_x, date_x)
+    bright_size = 30
+    bright_x0 = time_date_left - bright_size - 10
+    draw_brightness_button(draw, bright_x0, 16, size=bright_size)
+
+    right_boundary = bright_x0
+    if is_mock:
+        badge_font = get_font(11, bold=True)
+        mw = mock_badge_width(draw, badge_font)
+        mock_x = bright_x0 - mw - 10
+        draw_mock_badge(draw, mock_x, 36, badge_font)
+        right_boundary = mock_x
+
+    batt_x = right_boundary
     if batt_level is not None:
         font_batt = get_font(13, bold=True)
         label = f"{batt_level}%"
@@ -67,7 +87,7 @@ def render_morning_view(
         label_w = bbox[2] - bbox[0]
         bolt_w = 12 if is_charging else 0
         total_batt_w = bolt_w + label_w + 6 + 28 + 3
-        batt_x = time_x - total_batt_w - 18
+        batt_x = right_boundary - total_batt_w - 14
         draw_battery_indicator(
             draw, batt_x, 16, batt_level, is_charging=is_charging, font=font_batt
         )
@@ -85,21 +105,6 @@ def render_morning_view(
         fill="#555555",
         font=font_header_sub,
     )
-
-    date_bbox = draw.textbbox((0, 0), now_date_str, font=font_header_sub)
-    date_w = date_bbox[2] - date_bbox[0]
-    draw.text(
-        (width - 20 - date_w, 39), now_date_str, fill="#555555", font=font_header_sub
-    )
-
-    if is_mock:
-        badge_font = get_font(11, bold=True)
-        draw_mock_badge(
-            draw,
-            width - 20 - date_w - mock_badge_width(draw, badge_font) - 10,
-            36,
-            badge_font,
-        )
 
     draw.line([(20, 62), (width - 20, 62)], fill="black", width=2)
 

@@ -83,6 +83,7 @@ def parse_widget(data: dict[str, Any]) -> Widget:
             show_time=data.get("show_time", True),
             show_battery=data.get("show_battery", True),
             show_date=data.get("show_date", True),
+            show_brightness=data.get("show_brightness", True),
         )
     if wtype in ("weather_hero", "weather"):
         return WeatherHeroWidget(

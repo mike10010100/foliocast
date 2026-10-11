@@ -9,6 +9,7 @@ from canvas import (
     WIDTH,
     draw_battery_indicator,
     draw_bottom_button_bar,
+    draw_brightness_button,
     draw_header_badge,
     draw_mock_badge,
     ellipsize_to_width,
@@ -59,22 +60,36 @@ def render_evening_view(
     now_time_str = now.strftime("%-I:%M %p")
     now_date_str = now.strftime("%A, %b %-d")
 
-    b_x1 = draw_header_badge(draw, 20, 14, "126", font_title, pad_x=16)
-    draw.text(
-        (b_x1 + 12, 15), "HOBOKEN → NYC PORT AUTHORITY", fill="black", font=font_title
-    )
-    sub_title = (
-        "NJ TRANSIT 126 & CITI BIKE LIVE TRACKER"
-        if has_citibike
-        else "NJ TRANSIT REAL-TIME TRACKER"
-    )
-    draw.text((b_x1 + 12, 39), sub_title, fill="#555555", font=font_header_sub)
-
     time_bbox = draw.textbbox((0, 0), now_time_str, font=font_time)
     time_w = time_bbox[2] - time_bbox[0]
     time_x = width - 20 - time_w
     draw.text((time_x, 15), now_time_str, fill="black", font=font_time)
 
+    date_bbox = draw.textbbox((0, 0), now_date_str, font=font_header_sub)
+    date_w = date_bbox[2] - date_bbox[0]
+    date_x = width - 20 - date_w
+    draw.text((date_x, 39), now_date_str, fill="#555555", font=font_header_sub)
+
+    # Brightness toggle button immediately to left of time and date
+    time_date_left = min(time_x, date_x)
+    bright_size = 30
+    bright_x0 = time_date_left - bright_size - 10
+    draw_brightness_button(draw, bright_x0, 16, size=bright_size)
+
+    right_boundary = bright_x0
+    if is_mock:
+        badge_font = get_font(11, bold=True)
+        mw = mock_badge_width(draw, badge_font)
+        mock_x = int(bright_x0 - mw - 10)
+        draw_mock_badge(
+            draw,
+            mock_x,
+            36,
+            badge_font,
+        )
+        right_boundary = mock_x
+
+    batt_x = right_boundary
     if batt_level is not None:
         font_batt = get_font(13, bold=True)
         label = f"{batt_level}%"
@@ -82,25 +97,22 @@ def render_evening_view(
         label_w = bbox[2] - bbox[0]
         bolt_w = 12 if is_charging else 0
         total_batt_w = bolt_w + label_w + 6 + 28 + 3
-        batt_x = int(time_x - total_batt_w - 18)
+        batt_x = int(right_boundary - total_batt_w - 14)
         draw_battery_indicator(
             draw, batt_x, 16, batt_level, is_charging=is_charging, font=font_batt
         )
 
-    date_bbox = draw.textbbox((0, 0), now_date_str, font=font_header_sub)
-    date_w = date_bbox[2] - date_bbox[0]
-    draw.text(
-        (width - 20 - date_w, 39), now_date_str, fill="#555555", font=font_header_sub
+    b_x1 = draw_header_badge(draw, 20, 14, "126", font_title, pad_x=16)
+    title_text = "HOBOKEN → NYC PORT AUTHORITY"
+    max_title_w = (batt_x - 16) - (b_x1 + 12)
+    title_text = ellipsize_to_width(draw, title_text, font_title, max(50, max_title_w))
+    draw.text((b_x1 + 12, 15), title_text, fill="black", font=font_title)
+    sub_title = (
+        "NJ TRANSIT 126 & CITI BIKE LIVE TRACKER"
+        if has_citibike
+        else "NJ TRANSIT REAL-TIME TRACKER"
     )
-
-    if is_mock:
-        badge_font = get_font(11, bold=True)
-        draw_mock_badge(
-            draw,
-            int(width - 20 - date_w - mock_badge_width(draw, badge_font) - 10),
-            36,
-            badge_font,
-        )
+    draw.text((b_x1 + 12, 39), sub_title, fill="#555555", font=font_header_sub)
 
     draw.line([(20, 62), (width - 20, 62)], fill="black", width=2)
 

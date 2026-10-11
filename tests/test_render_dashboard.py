@@ -724,6 +724,32 @@ class TestUncoveredDashboardBranches(unittest.TestCase):
         img = Image.new("RGB", (800, 480), "white")
         draw = ImageDraw.Draw(img)
         rd.draw_bottom_button_bar(draw, 800, 480, font=None)
+        # Test all active view states
+        rd.draw_bottom_button_bar(draw, 800, 480, active_view="morning")
+        rd.draw_bottom_button_bar(draw, 800, 480, active_view="evening")
+        rd.draw_bottom_button_bar(draw, 800, 480, active_view="weather")
+        rd.draw_bottom_button_bar(draw, 800, 600, active_view="weather")
+
+    def test_draw_brightness_button(self):
+        img = Image.new("RGB", (100, 100), "white")
+        draw = ImageDraw.Draw(img)
+        x0, x1 = rd.draw_brightness_button(draw, 10, 15, size=30)
+        self.assertEqual(x0, 10)
+        self.assertEqual(x1, 40)
+
+        # Also test with ScaledDraw proxy
+        sd = rd.ScaledDraw(draw, 2.0)
+        x0_s, x1_s = rd.draw_brightness_button(sd, 10, 15, size=30)
+        self.assertEqual(x0_s, 10)
+        self.assertEqual(x1_s, 40)
+
+    def test_scaled_draw_ellipse(self):
+        mock_draw = MagicMock()
+        sd = rd.ScaledDraw(mock_draw, 2.0)
+        sd.ellipse([(10, 10), (20, 20)], fill="black", outline="black", width=2)
+        mock_draw.ellipse.assert_called_once_with(
+            [(20.0, 20.0), (40.0, 40.0)], fill="black", outline="black", width=4
+        )
 
     def test_scaled_draw_font_exception(self):
         img = Image.new("RGB", (100, 100), "white")

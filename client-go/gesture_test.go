@@ -446,3 +446,65 @@ func TestGestureDetectorButtonTaps(t *testing.T) {
 		t.Errorf("Expected 1 refresh button tap, got %d", refreshTaps)
 	}
 }
+
+func TestGestureDetectorWeatherAndBrightnessButtons(t *testing.T) {
+	cfg := DefaultGestureConfig()
+	cfg.DebounceDuration = 5 * time.Millisecond
+	gd := NewGestureDetector(cfg)
+	defer gd.Stop()
+
+	var (
+		weatherTaps    int
+		brightnessTaps int
+		topRightTaps   int
+		mu             sync.Mutex
+	)
+
+	gd.OnWeatherTap = func(x, y int32) {
+		mu.Lock()
+		weatherTaps++
+		mu.Unlock()
+	}
+	gd.OnBrightnessTap = func(x, y int32) {
+		mu.Lock()
+		brightnessTaps++
+		mu.Unlock()
+	}
+	gd.OnTopRightTap = func(x, y int32) {
+		mu.Lock()
+		topRightTaps++
+		mu.Unlock()
+	}
+
+	t0 := time.Now()
+
+	// 1. Weather button in bottom bar (zone 394..586, y >= 556)
+	gd.curX = 490
+	gd.curY = 580
+	gd.TriggerTap(t0)
+
+	// 2. Brightness button in top-right (zone 580..660, y <= 70)
+	gd.curX = 620
+	gd.curY = 30
+	t1 := t0.Add(20 * time.Millisecond)
+	gd.TriggerTap(t1)
+
+	// 3. Top-right corner (zone > 660, y < 120)
+	gd.curX = 720
+	gd.curY = 30
+	t2 := t1.Add(20 * time.Millisecond)
+	gd.TriggerTap(t2)
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	if weatherTaps != 1 {
+		t.Errorf("expected 1 weather tap, got %d", weatherTaps)
+	}
+	if brightnessTaps != 1 {
+		t.Errorf("expected 1 brightness tap, got %d", brightnessTaps)
+	}
+	if topRightTaps != 1 {
+		t.Errorf("expected 1 top-right tap, got %d", topRightTaps)
+	}
+}

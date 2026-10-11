@@ -253,3 +253,50 @@ class TestDashboardRegistry(unittest.TestCase):
 
         # Non-existent dashboard returns False
         self.assertFalse(self.registry.render("nonexistent", draw, ctx))
+
+    def test_header_widget_brightness_toggle(self):
+        img = Image.new("RGB", (800, 480), "white")
+        draw = ScaledDraw(ImageDraw.Draw(img), 1.0)
+        ctx = RenderContext(
+            now=datetime.now(),
+            batt_level=85,
+            is_charging=False,
+            is_mock=True,
+            width=800,
+            height=480,
+        )
+
+        header_with_bright = HeaderWidget(show_brightness=True)
+        header_with_bright.render(draw, Rect(20, 10, 780, 60), ctx)
+
+        header_without_bright = HeaderWidget(show_brightness=False)
+        header_without_bright.render(draw, Rect(20, 10, 780, 60), ctx)
+
+        # Parse from widget spec
+        parsed = parse_widget({"type": "header", "show_brightness": False})
+        self.assertIsInstance(parsed, HeaderWidget)
+        self.assertFalse(parsed.show_brightness)
+
+    def test_button_bar_widget_views(self):
+        img = Image.new("RGB", (800, 480), "white")
+        draw = ScaledDraw(ImageDraw.Draw(img), 1.0)
+        ctx = RenderContext(
+            now=datetime.now(),
+            presentation="interactive",
+            active_view="weather",
+            available_views=["evening", "morning", "weather"],
+            width=800,
+            height=480,
+        )
+        bar = ButtonBarWidget()
+        bar.render(draw, Rect(20, 436, 780, 472), ctx)
+
+        # Non-interactive falls back to status strip
+        ctx_dormant = RenderContext(
+            now=datetime.now(),
+            presentation="dormant",
+            status_note="CUSTOM DORMANT NOTE",
+            width=800,
+            height=480,
+        )
+        bar.render(draw, Rect(20, 436, 780, 472), ctx_dormant)

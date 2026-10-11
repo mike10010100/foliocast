@@ -64,23 +64,22 @@ sequenceDiagram
 The Go client directly decodes raw evdev input events from `/dev/input/event1` (`pt_mt` digitizer).
 
 ### 4.1 On-Screen Tactile Button Bar
-Along the bottom edge of the landscape display, five distinct touch zones are mapped:
+Along the bottom edge of the landscape display, four distinct touch zones are mapped:
 
 | Button | Action | Behavior |
 |---|---|---|
 | **BUSES** | Switch View | Activates Route 126 NJ Transit Bus departures view. |
 | **CITI BIKE** | Switch View | Activates Citi Bike dock & e-bike availability view. |
-| **LIGHT** | Frontlight Cycle | Toggles frontlight: **Off (0)** $\rightarrow$ **Cozy (8)** $\rightarrow$ **Bright (18)** $\rightarrow$ **Off (0)**. |
+| **WEATHER** | Switch View | Activates Hoboken weather telemetry & multi-day forecast view. |
 | **REFRESH** | Immediate Fetch | Bypasses remaining poll countdown and forces an immediate arrival update. |
-| **EXIT** | Clean Exit | Restores standard Kindle Framework (`lipc-set-prop com.lab126.appmgrd start app://com.lab126.booklet.home`). |
 
-### 4.2 Corner & Surface Gestures
-Outside the bottom button bar:
+### 4.2 Top-Right Brightness Toggle & Corner Gestures
+- **Top-Right Brightness Button (☼)**: Situated immediately to the left of the time and date in the top-right header, tapping cycles frontlight brightness: **Off (0)** $\rightarrow$ **Cozy (8)** $\rightarrow$ **Bright (18)** $\rightarrow$ **Off (0)**.
 - **Single Tap Anywhere**: Wakes or extends the current viewing session; holds the frontlight without flickering the screen.
-- **Double Tap Anywhere (< 380ms)**: Quick exit shortcut back to Kindle Home.
+- **Double Tap Anywhere (< 380ms)**: Forces an immediate refresh.
 - **Top-Left Corner Tap**: Immediate arrival refresh shortcut.
-- **Top-Right Corner Tap**: Instant exit shortcut.
-- **Bottom-Left Corner Tap**: Cycles views between Citi Bike and Bus departures.
+- **Top-Right Corner Tap**: Immediate arrival refresh shortcut.
+- **Bottom-Left Corner Tap**: Cycles views sequentially across active dashboard views.
 
 ### 4.3 Hardware Power Button
 Pressing the physical Kindle power button generates `KEY_POWER` (`116`) events on `/dev/input/event0`:
