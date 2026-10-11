@@ -6,10 +6,18 @@ This guide outlines developer workflows, static analysis standards, testing proc
 
 ## 1. Prerequisites
 
+### 1.1 Fast Setup with mise (Recommended)
+If you use [mise](https://mise.jdx.dev/), all language runtimes (Go 1.26, Python 3.11) and linters (`golangci-lint`, `shellcheck`, `hadolint`) are pre-configured in `.mise.toml`:
+```bash
+mise install
+pip install -r requirements-dev.txt
+```
+
+### 1.2 Manual Prerequisites
 - **Go**: 1.22+ (tested up to 1.26 on Linux and macOS).
 - **Python**: 3.11+ (Python 3.11+ recommended and required for Docker builds).
 - **Shell**: Bash 4+ and POSIX `/bin/sh`.
-- **System Tools**: `make`, `curl`, `openssl`, `shellcheck`.
+- **System Tools**: `make`, `curl`, `openssl`, `shellcheck`, `golangci-lint`, `hadolint`.
 
 Install development Python dependencies:
 ```bash
@@ -20,7 +28,7 @@ pip install -r requirements-dev.txt
 
 ## 2. Makefile Automation Reference
 
-The repository uses a unified [`Makefile`](file:///home/mike10010100/git/transit-tracker/Makefile) orchestrating tasks across all stacks.
+The repository uses a unified [`Makefile`](../Makefile) orchestrating tasks across all stacks.
 
 | Target | Description | Underlying Tools |
 |---|---|---|
@@ -49,7 +57,7 @@ The repository uses a unified [`Makefile`](file:///home/mike10010100/git/transit
 
 ### 3.1 Go Tooling
 - **Formatting**: `gofmt -s` simplifies composite literals and slice operations.
-- **Static Analysis**: Configured via [`.golangci.yml`](file:///home/mike10010100/git/transit-tracker/.golangci.yml):
+- **Static Analysis**: Configured via [`.golangci.yml`](../.golangci.yml):
   - `govet`: Standard compiler sanity analysis.
   - `errcheck`: Ensures checked error returns.
   - `staticcheck`: Advanced Go code analysis.
@@ -59,17 +67,17 @@ The repository uses a unified [`Makefile`](file:///home/mike10010100/git/transit
 - **Zero External Dependencies**: The client is built using 100% Go standard library. Do not import third-party packages into `client-go/`.
 
 ### 3.2 Python Tooling
-- **Configuration**: All settings consolidated in [`pyproject.toml`](file:///home/mike10010100/git/transit-tracker/pyproject.toml).
+- **Configuration**: All settings consolidated in [`pyproject.toml`](../pyproject.toml).
 - **Formatting**: `ruff format` enforces standard 88-character Black-compliant layout.
 - **Linting**: `ruff check` evaluates Pyflakes (`F`), Pycodestyle (`E`/`W`), isort (`I`), pep8-naming (`N`), and flake8-bugbear (`B`).
 - **Static Typing**: `mypy server` checks all 18 server modules with strict type analysis.
 
 ### 3.3 Shell Tooling
 - **Strict POSIX Compliance**: Launcher script runs under `/bin/sh` using `set -eu` without non-portable bash extensions.
-- **ShellCheck**: Configured via [`.shellcheckrc`](file:///home/mike10010100/git/transit-tracker/.shellcheckrc).
+- **ShellCheck**: Configured via [`.shellcheckrc`](../.shellcheckrc).
 
 ### 3.4 Docker Tooling
-- **Hadolint**: Validates [`Dockerfile`](file:///home/mike10010100/git/transit-tracker/Dockerfile) in CI to ensure secure multi-stage build patterns, unprivileged users, and build cache optimization.
+- **Hadolint**: Validates [`Dockerfile`](../Dockerfile) in CI to ensure secure multi-stage build patterns, unprivileged users, and build cache optimization.
 
 ---
 
@@ -86,7 +94,7 @@ The repository uses a unified [`Makefile`](file:///home/mike10010100/git/transit
 - Branch coverage status: **94.0%+** (gate: **92%**).
 
 ### 4.3 Shell Launcher Integration Tests
-- Script: [`tests/test_launcher.sh`](file:///home/mike10010100/git/transit-tracker/tests/test_launcher.sh).
+- Script: [`tests/test_launcher.sh`](../tests/test_launcher.sh).
 - Exercises 10 realistic integration scenarios using mock servers, temporary directory sandboxes, and fake ELF binaries:
   1. Tier 1 LAN discovery (mDNS hostname probe).
   2. Tier 2 LAN discovery (Gateway IP probe from `/proc/net/route`).
@@ -140,10 +148,10 @@ Install pre-commit hooks locally to catch issues prior to committing:
 ```bash
 pre-commit install
 ```
-Configured in [`.pre-commit-config.yaml`](file:///home/mike10010100/git/transit-tracker/.pre-commit-config.yaml).
+Configured in [`.pre-commit-config.yaml`](../.pre-commit-config.yaml).
 
 ### 6.2 GitHub Actions CI
-The CI workflow in [`.github/workflows/ci.yml`](file:///home/mike10010100/git/transit-tracker/.github/workflows/ci.yml):
+The CI workflow in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml):
 - Enforces workflow concurrency (`cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}`).
 - Uses pinned immutable action SHAs.
 - Runs 5 validation jobs:
@@ -159,9 +167,9 @@ The CI workflow in [`.github/workflows/ci.yml`](file:///home/mike10010100/git/tr
 ## 7. Release Lifecycle & Continuous Deployment
 
 ### 7.1 Semantic Versioning & CHANGELOG
-- All changes must bump [`VERSION`](file:///home/mike10010100/git/transit-tracker/VERSION) per [SemVer 2.0.0](https://semver.org/).
-- Changes must be documented in [`CHANGELOG.md`](file:///home/mike10010100/git/transit-tracker/CHANGELOG.md) under `## [X.Y.Z] - YYYY-MM-DD`.
-- Verified in CI on every PR via [`scripts/check_version_bump.sh`](file:///home/mike10010100/git/transit-tracker/scripts/check_version_bump.sh).
+- All changes must bump [`VERSION`](../VERSION) per [SemVer 2.0.0](https://semver.org/).
+- Changes must be documented in [`CHANGELOG.md`](../CHANGELOG.md) under `## [X.Y.Z] - YYYY-MM-DD`.
+- Verified in CI on every PR via [`scripts/check_version_bump.sh`](../scripts/check_version_bump.sh).
 
 ### 7.2 Branch Protection on `main`
 - Direct pushes to `main` are restricted. All modifications require a pull request.
@@ -169,5 +177,5 @@ The CI workflow in [`.github/workflows/ci.yml`](file:///home/mike10010100/git/tr
 - Linear history is enforced (squash or rebase; no merge bubbles).
 
 ### 7.3 Automated Host Deployment
-- Local deployments use [`scripts/deploy.sh`](file:///home/mike10010100/git/transit-tracker/scripts/deploy.sh) (or `make deploy`).
-- On server boot, `/home/mike10010100/startup.sh` automatically pulls the latest `main` branch, builds the versioned image, and re-launches the container stack.
+- Local deployments use [`scripts/deploy.sh`](../scripts/deploy.sh) (or `make deploy`).
+- On server boot, a host service script (e.g. `startup.sh`) automatically pulls the latest `main` branch, builds the versioned image, and re-launches the container stack.

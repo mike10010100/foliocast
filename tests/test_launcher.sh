@@ -12,6 +12,12 @@ if [ ! -f "$LAUNCHER" ]; then
     exit 1
 fi
 
+if [ "$(uname -s)" != "Linux" ]; then
+    echo "==> Notice: Skipping Kindle launcher integration tests on $(uname -s)."
+    echo "    (Requires Linux ELF execution environment; strictly verified in Linux CI)."
+    exit 0
+fi
+
 TEST_TMP="$(mktemp -d /tmp/test_launcher_XXXXXX)"
 SERVER_PID=""
 

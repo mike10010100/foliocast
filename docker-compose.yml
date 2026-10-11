@@ -6,7 +6,7 @@ services:
       args:
         # 1 = allow building without a signing key (dev only; devices are then
         # never offered the binary and it can never OTA-update itself).
-        ALLOW_UNSIGNED_OTA: ${ALLOW_UNSIGNED_OTA:-0}
+        ALLOW_UNSIGNED_OTA: ${ALLOW_UNSIGNED_OTA:-1}
       # The release signing key is passed to the build as a BuildKit secret, so
       # it never lands in an image layer or the build cache. Create it once with
       # `make keygen` (or `openssl genpkey -algorithm ed25519 -out secrets/ota_ed25519.key`).
@@ -19,8 +19,11 @@ services:
     # allows the container to bind directly to the LAN interface. This enables:
     # 1. Zero-config mDNS service advertisement (_transittracker._tcp.local)
     # 2. Receiving Kindle UDP discovery broadcasts (port 8001) without NAT traversal
-    # Note: the server then listens on every host interface. Control endpoints
-    # always require TRACKER_CONTROL_TOKEN (auto-generated if unset).
+    # Note: On macOS/Windows Docker Desktop, if host networking does not expose port 8000,
+    # comment out network_mode: host and uncomment the ports block below:
+    # ports:
+    #   - "${PORT:-8000}:${PORT:-8000}"
+    #   - "8001:8001/udp"
     network_mode: host
     environment:
       - PORT=${PORT:-8000}
@@ -77,7 +80,10 @@ services:
 
 secrets:
   ota_signing_key:
-    file: ${OTA_SIGNING_KEY_FILE:-./secrets/ota_ed25519.key}
+    # Defaults to /dev/null for unsigned local dev builds.
+    # To sign production releases, generate secrets/ota_ed25519.key via 'make keygen'
+    # and set OTA_SIGNING_KEY_FILE=./secrets/ota_ed25519.key (or use scripts/deploy.sh).
+    file: ${OTA_SIGNING_KEY_FILE:-/dev/null}
 
 volumes:
   tracker-cache:

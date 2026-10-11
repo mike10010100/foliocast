@@ -30,7 +30,7 @@ Before deploying to a Kindle Paperwhite:
 
 ## 3. Installation via Launcher Script
 
-The bootstrap script [`client-go/launcher/TransitTracker.sh`](file:///home/mike10010100/git/transit-tracker/client-go/launcher/TransitTracker.sh) provides zero-touch onboarding:
+The bootstrap script [`client-go/launcher/TransitTracker.sh`](../client-go/launcher/TransitTracker.sh) provides zero-touch onboarding:
 
 1. **Connect the Kindle to your computer over USB**.
 2. **Copy the launcher script** to the documents directory:

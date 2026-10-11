@@ -1,0 +1,10 @@
+[tools]
+go = "1.26"
+python = "3.11"
+shellcheck = "latest"
+golangci-lint = "latest"
+hadolint = "latest"
+
+[env]
+# Resolves flat imports when running python scripts directly from repository root
+PYTHONPATH = "server"

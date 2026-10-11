@@ -30,12 +30,15 @@ docker compose up -d
 ### Option B: Local Python Server
 
 ```bash
-# 1. Install dependencies
+# 1. Install dependencies (or run 'mise install' if using mise)
 pip install -r requirements.txt
 
 # 2. Start the server
 python server/server.py
 ```
+
+> [!NOTE]
+> If deploying to a Kindle using Option B, compile the static ARM client first via `make build` (or `ALLOW_UNSIGNED=1 make build`) so `tracker-arm` is available for download at `/tracker-arm`. Option A (Docker Compose) handles compilation automatically.
 
 ### View in Your Browser
 
@@ -52,19 +55,21 @@ The dashboard automatically optimizes its layout based on the time of day:
 
 ```
 +-------------------------------------------------------------------------+
-| HOBOKEN TRANSIT TRACKER               BATTERY: 87% [⚡]   UPDATED: 08:15 |
+| HOBOKEN TRANSIT TRACKER         (☼)   BATTERY: 87% [⚡]   UPDATED: 08:15 |
 +------------------------------------+------------------------------------+
 |  CITI BIKE DOCKS (MORNING HERO)    |  NJ TRANSIT ROUTE 126 BUSES        |
 |  Clinton & 9th St:  12 bikes [6 ⚡] |  Washington & 9th: 3 min, 11 min   |
 |  Washington & 11th:  8 bikes [4 ⚡] |  Clinton & 9th:    6 min, 18 min   |
 |  Willow & 12th:      4 bikes [2 ⚡] |  Status: Normal Service            |
 +------------------------------------+------------------------------------+
-| [BUSES]    [CITI BIKE]    [LIGHT]    [REFRESH]    [EXIT]  | Phase: Peak |
+| [BUSES]    [CITI BIKE]    [WEATHER]    [↻ REFRESH]        | Phase: Peak |
 +-------------------------------------------------------------------------+
 ```
 
 - **☀️ Morning View (5:00 AM – 12:00 PM)**: Prioritizes Citi Bike dock availability and e-bike counts for the morning commute into Manhattan.
 - **🌙 Evening View (12:00 PM – 5:00 AM)**: Prioritizes NJ Transit Route 126 departures with real-time ETA predictions.
+- **🌦️ Weather View**: Hoboken local conditions, precipitation probability, and 4-day forecast.
+- **🎨 Modular Dashboards**: Custom views defined via JSON in `config/dashboards/` (`weather`, `bus_focus`, `citibike_focus`).
 - **🔄 Auto-Switching**: The server selects the appropriate view automatically, or you can switch manually via the touch screen or web interface.
 
 ---
@@ -98,14 +103,15 @@ When running on a Kindle Paperwhite, the following physical and touch interactio
 |---|---|---|
 | **BUSES** | Bottom button bar | Switches to Route 126 Bus departures view. |
 | **CITI BIKE** | Bottom button bar | Switches to Citi Bike availability view. |
-| **LIGHT** | Bottom button bar | Cycles frontlight: **Off (0)** $\rightarrow$ **Cozy (8)** $\rightarrow$ **Bright (18)** $\rightarrow$ **Off (0)**. |
-| **REFRESH** | Bottom button bar | Forces an immediate arrival refresh. |
-| **EXIT** | Bottom button bar | Cleanly exits back to the Kindle Home screen. |
+| **WEATHER** | Bottom button bar | Switches to Hoboken weather and forecast view. |
+| **↻ REFRESH** | Bottom button bar | Forces an immediate arrival refresh. |
+| **Brightness (☼)** | Top-right header | Cycles frontlight: **Off (0)** $\rightarrow$ **Cozy (8)** $\rightarrow$ **Bright (18)** $\rightarrow$ **Off (0)**. |
 | **Single Tap** | Anywhere on screen | Wakes interaction session; keeps frontlight on. |
 | **Double Tap** | Anywhere (< 380ms) | Quick exit back to Kindle Home. |
 | **Power Button** | Hardware button | Wakes dormant screen; clean exit if already interactive. |
 | **Top-Left Tap** | Top-left corner | Immediate arrival refresh shortcut. |
-| **Top-Right Tap** | Top-right corner | Immediate exit shortcut. |
+| **Top-Right Tap** | Top-right corner | Immediate arrival refresh shortcut. |
+| **Bottom-Left Tap**| Bottom-left corner | Cycles across active dashboard views. |
 
 ---
 

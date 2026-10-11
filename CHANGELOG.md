@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.39.4] - 2026-10-11
+
+### Added
+
+- **Polyglot Runtime & Toolchain Management with mise** (`.mise.toml`): Added configuration pinning Go 1.26, Python 3.11, `golangci-lint`, `shellcheck`, and `hadolint`, with automatic `PYTHONPATH="server"` environment injection.
+- **Cross-Platform Launcher Test Support** (`tests/test_launcher.sh`): Made integration tests portable across macOS and Linux by gracefully skipping Linux ELF-only binary executions on non-Linux hosts while remaining 100% enforced in Linux CI.
+
+### Changed
+
+- **Clean-Clone Docker Compose Experience** (`docker-compose.yml`): Defaulted `ALLOW_UNSIGNED_OTA` to `1` and fallback `ota_signing_key` file to `/dev/null` for local development so `docker compose up -d` works immediately on fresh checkouts without requiring host keygen.
+- **Documentation & Link Hygiene** (`docs/development.md`, `docs/hardware_kindle.md`, `README.md`):
+  - Fixed hardcoded machine paths (`file:///home/mike10010100/...`) into clean relative links.
+  - Documented `mise` quick-start instructions in `docs/development.md`.
+  - Synchronized `README.md` bottom button bar diagram and touch controls table with the actual 4-button layout (`BUSES`, `CITI BIKE`, `WEATHER`, `↻ REFRESH`) and `(☼)` brightness toggle.
+  - Clarified Kindle binary compilation requirements when running under Option B (Local Python server).
+- **Modernized Python Tooling Target** (`pyproject.toml`): Updated Mypy target to Python 3.11 to match runtime and eliminate deprecation warnings.
+- **Expanded Environment Template** (`.env.example`): Added comprehensive documentation for server port, timezone, control tokens, client modes, schedule configuration, and signing parameters.
+
+---
+
 ## [1.39.3] - 2026-10-11
 
 ### Changed
