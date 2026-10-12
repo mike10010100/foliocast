@@ -24,7 +24,7 @@ class TestLocationConfigDataclass(unittest.TestCase):
         self.assertAlmostEqual(cfg.latitude, 40.7371)
         self.assertAlmostEqual(cfg.longitude, -74.0305)
         self.assertEqual(cfg.location_name, "Hoboken City Hall")
-        self.assertEqual(cfg.address, "Hoboken City Hall")
+        self.assertEqual(cfg.address, "94 Washington St")
         self.assertEqual(cfg.city, "Hoboken")
         self.assertEqual(cfg.state, "NJ")
         self.assertEqual(cfg.route, "126")

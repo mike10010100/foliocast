@@ -17,8 +17,8 @@ from typing import Any, Optional
 logger = logging.getLogger("weather")
 
 # Default coordinates: Hoboken City Hall, Hoboken, NJ
-DEFAULT_LATITUDE = 40.7484
-DEFAULT_LONGITUDE = -74.0303
+DEFAULT_LATITUDE = 40.7371
+DEFAULT_LONGITUDE = -74.0305
 DEFAULT_CACHE_TTL = 900  # 15 minutes
 
 # WMO Weather interpretation codes (WW)

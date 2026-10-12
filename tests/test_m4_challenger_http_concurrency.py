@@ -390,7 +390,7 @@ class TestConcurrencyStress(unittest.TestCase):
 
     def test_concurrent_weather_tracker_operations_24_threads(self) -> None:
         """24 concurrent threads stressing set_location, update_from_config, invalidate, and get_weather."""
-        tracker = WeatherTracker(latitude=40.7484, longitude=-74.0303)
+        tracker = WeatherTracker(latitude=40.7371, longitude=-74.0305)
         sample_api_resp = {
             "current": {
                 "temperature_2m": 68.0,
@@ -491,8 +491,8 @@ class TestConcurrencyStress(unittest.TestCase):
                     has_cb = (thread_id + i) % 3 != 0
                     cb_data = cb_mock if has_cb else []
                     cfg = LocationConfig(
-                        latitude=40.7484 + (thread_id * 0.001),
-                        longitude=-74.0303 - (thread_id * 0.001),
+                        latitude=40.7371 + (thread_id * 0.001),
+                        longitude=-74.0305 - (thread_id * 0.001),
                         city="Hoboken" if has_cb else "Jersey City",
                         enable_micromobility=has_cb,
                     )
@@ -581,8 +581,8 @@ class TestConcurrencyStress(unittest.TestCase):
                             }
                         else:
                             payload = {
-                                "latitude": 40.7484,
-                                "longitude": -74.0303,
+                                "latitude": 40.7371,
+                                "longitude": -74.0305,
                                 "city": "Hoboken",
                                 "enable_micromobility": True,
                             }

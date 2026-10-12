@@ -1,6 +1,6 @@
 """
 Citi Bike Live Station Inventory Tracker
-Fetches real-time bike & dock availability for the closest stations to Hoboken City Hall, Hoboken, NJ,
+Fetches real-time bike & dock availability for the closest stations to the configured location,
 with dynamic prioritization for stations that currently have e-bikes available.
 """
 
@@ -57,7 +57,7 @@ class CitiBikeUnavailable(RuntimeError):
     """Raised when no live or acceptably fresh cached data is available."""
 
 
-# Closest Citi Bike stations to Hoboken City Hall, Hoboken, NJ (40.7371, -74.0305)
+# Default Hoboken Citi Bike stations
 # Pedestrian routing distances and walk times based on actual street routing via crosswalks
 DEFAULT_STATIONS: list[StationConfig] = [
     {

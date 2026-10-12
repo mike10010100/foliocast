@@ -237,7 +237,7 @@ Retrieves the active location configuration, current coordinates, and the automa
     "latitude": 40.7371,
     "longitude": -74.0305,
     "location_name": "Hoboken City Hall",
-    "address": "Hoboken City Hall",
+    "address": "94 Washington St",
     "city": "Hoboken",
     "state": "NJ",
     "route": "126",
@@ -249,31 +249,31 @@ Retrieves the active location configuration, current coordinates, and the automa
   },
   "resolved_bus_stops": [
     {
-      "id": "20512",
-      "name": "Washington & 9th",
-      "subtitle": "Stop #20512 • via Lincoln Tunnel",
-      "walk_min": 5,
-      "distance_m": 435,
+      "id": "20508",
+      "name": "Washington & 1st",
+      "subtitle": "Stop #20508 • via Washington St",
+      "walk_min": 0,
+      "distance_m": 0,
       "line": "126",
-      "direction": "TO NYC"
+      "direction": "inbound"
     },
     {
-      "id": "20494",
-      "name": "Clinton & 9th",
-      "subtitle": "Stop #20494 • via Clinton Ave",
-      "walk_min": 3,
-      "distance_m": 246,
+      "id": "20491",
+      "name": "Clinton & 1st",
+      "subtitle": "Stop #20491 • via Clinton Ave",
+      "walk_min": 6,
+      "distance_m": 518,
       "line": "126",
-      "direction": "TO NYC"
+      "direction": "inbound"
     }
   ],
   "resolved_citibike_stations": [
     {
-      "id": "fadf00cf-d84a-49e8-9607-c67154915412",
-      "name": "Clinton & 9th",
-      "full_name": "Columbus Park - Clinton St & 9 St",
-      "walk_min": 3,
-      "distance_m": 184
+      "id": "HB102",
+      "name": "Washington & 1st",
+      "full_name": "Washington St & 1 St",
+      "walk_min": 1,
+      "distance_m": 85
     }
   ]
 }

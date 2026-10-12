@@ -139,10 +139,10 @@ class TestTransitCatalog(unittest.TestCase):
         self.assertTrue(is_in_hoboken_bounds(40.770, -74.015))
 
         # Out-of-bounds
-        self.assertFalse(is_in_hoboken_bounds(40.719, -74.030))  # south
-        self.assertFalse(is_in_hoboken_bounds(40.771, -74.030))  # north
-        self.assertFalse(is_in_hoboken_bounds(40.748, -74.056))  # west
-        self.assertFalse(is_in_hoboken_bounds(40.748, -74.014))  # east
+        self.assertFalse(is_in_hoboken_bounds(40.719, -74.0305))  # south
+        self.assertFalse(is_in_hoboken_bounds(40.771, -74.0305))  # north
+        self.assertFalse(is_in_hoboken_bounds(40.7371, -74.056))  # west
+        self.assertFalse(is_in_hoboken_bounds(40.7371, -74.014))  # east
         # Distant locations
         self.assertFalse(
             is_in_hoboken_bounds(40.7580, -73.9855)
@@ -156,7 +156,7 @@ class TestPedestrianGeometry(unittest.TestCase):
     def test_haversine_properties(self) -> None:
         """Haversine distance must satisfy identity, symmetry, and positive definiteness."""
         p1 = (40.7371, -74.0305)
-        p2 = (40.74780, -74.02800)
+        p2 = (40.7350, -74.0300)
 
         # Identity
         self.assertEqual(haversine_distance(p1[0], p1[1], p1[0], p1[1]), 0.0)
@@ -166,20 +166,20 @@ class TestPedestrianGeometry(unittest.TestCase):
         d2 = haversine_distance(p2[0], p2[1], p1[0], p1[1])
         self.assertAlmostEqual(d1, d2, places=6)
 
-        # Realistic value (~207 meters)
-        self.assertTrue(200.0 < d1 < 215.0)
+        # Realistic value (~237 meters)
+        self.assertTrue(230.0 < d1 < 245.0)
 
     def test_pedestrian_distance(self) -> None:
         """Pedestrian distance applies 1.25 circuity multiplier and returns integer."""
         p1 = (40.7371, -74.0305)
-        p2 = (40.74780, -74.02800)
+        p2 = (40.7350, -74.0300)
 
         straight = haversine_distance(p1[0], p1[1], p2[0], p2[1])
         ped = pedestrian_distance(p1[0], p1[1], p2[0], p2[1])
 
         self.assertIsInstance(ped, int)
         self.assertEqual(ped, int(round(straight * 1.25)))
-        self.assertEqual(ped, 259)
+        self.assertEqual(ped, 297)
 
     def test_calculate_walk_minutes(self) -> None:
         """Walk time evaluates at 80 m/min, with min 1 min if distance > 0."""
@@ -198,18 +198,18 @@ class TestPedestrianGeometry(unittest.TestCase):
 
     def test_format_resolved_stop(self) -> None:
         """format_resolved_stop projects BusStop into expected schema."""
-        stop = HOBOKEN_126_STOPS[4]  # Washington & 9th (20512)
+        stop = HOBOKEN_126_STOPS[0]  # Washington & 1st (20508)
         resolved = format_resolved_stop(stop, 40.7371, -74.0305)
-        self.assertEqual(resolved["id"], "20512")
-        self.assertEqual(resolved["name"], "Washington & 9th")
+        self.assertEqual(resolved["id"], "20508")
+        self.assertEqual(resolved["name"], "Washington & 1st")
         self.assertEqual(resolved["line"], "126")
         self.assertEqual(resolved["direction"], "inbound")
-        self.assertEqual(resolved["walk_min"], 3)
-        self.assertEqual(resolved["distance_m"], 259)
-        self.assertEqual(resolved["subtitle"], "Stop #20512 • via Lincoln Tunnel")
+        self.assertEqual(resolved["walk_min"], 0)
+        self.assertEqual(resolved["distance_m"], 0)
+        self.assertEqual(resolved["subtitle"], "Stop #20508 • via Washington St")
         self.assertEqual(resolved["corridor"], "washington")
-        self.assertEqual(resolved["lat"], 40.74780)
-        self.assertEqual(resolved["lon"], -74.02800)
+        self.assertEqual(resolved["lat"], 40.7371)
+        self.assertEqual(resolved["lon"], -74.0305)
 
 
 class TestHoboken126ProviderDualCorridor(unittest.TestCase):
@@ -218,8 +218,8 @@ class TestHoboken126ProviderDualCorridor(unittest.TestCase):
     def setUp(self) -> None:
         self.provider = Hoboken126Provider()
 
-    def test_backward_compatibility_919_park_ave(self) -> None:
-        """Default Hoboken City Hall Hoboken MUST resolve to 20512 and 20494."""
+    def test_dual_corridor_hoboken_city_hall(self) -> None:
+        """Default Hoboken City Hall MUST resolve to 20508 and 20491."""
         user_lat = 40.7371
         user_lon = -74.0305
 
@@ -228,23 +228,23 @@ class TestHoboken126ProviderDualCorridor(unittest.TestCase):
 
         # Index 0: Nearest Washington St stop
         w_stop = stops[0]
-        self.assertEqual(w_stop["id"], "20512")
-        self.assertEqual(w_stop["name"], "Washington & 9th")
+        self.assertEqual(w_stop["id"], "20508")
+        self.assertEqual(w_stop["name"], "Washington & 1st")
         self.assertEqual(w_stop["corridor"], CORRIDOR_WASHINGTON)
-        self.assertEqual(w_stop["subtitle"], "Stop #20512 • via Lincoln Tunnel")
-        self.assertEqual(w_stop["distance_m"], 259)
-        self.assertIn(w_stop["walk_min"], (3, 4, 5))
+        self.assertEqual(w_stop["subtitle"], "Stop #20508 • via Washington St")
+        self.assertEqual(w_stop["distance_m"], 0)
+        self.assertEqual(w_stop["walk_min"], 0)
         self.assertEqual(w_stop["line"], "126")
         self.assertEqual(w_stop["direction"], "inbound")
 
         # Index 1: Nearest Clinton St stop
         c_stop = stops[1]
-        self.assertEqual(c_stop["id"], "20494")
-        self.assertEqual(c_stop["name"], "Clinton & 9th")
+        self.assertEqual(c_stop["id"], "20491")
+        self.assertEqual(c_stop["name"], "Clinton & 1st")
         self.assertEqual(c_stop["corridor"], CORRIDOR_CLINTON)
-        self.assertEqual(c_stop["subtitle"], "Stop #20494 • via Clinton Ave")
-        self.assertEqual(c_stop["distance_m"], 276)
-        self.assertEqual(c_stop["walk_min"], 3)
+        self.assertEqual(c_stop["subtitle"], "Stop #20491 • via Clinton Ave")
+        self.assertEqual(c_stop["distance_m"], 518)
+        self.assertEqual(c_stop["walk_min"], 6)
         self.assertEqual(c_stop["line"], "126")
         self.assertEqual(c_stop["direction"], "inbound")
 
@@ -297,7 +297,7 @@ class TestHoboken126ProviderDualCorridor(unittest.TestCase):
             s for s in HOBOKEN_126_STOPS if s.corridor == CORRIDOR_WASHINGTON
         )
         prov_wash = Hoboken126Provider(stops=wash_only)
-        res_w = prov_wash.resolve_stops(40.7484, -74.0302)
+        res_w = prov_wash.resolve_stops(40.7371, -74.0305)
         self.assertEqual(len(res_w), 1)
         self.assertEqual(res_w[0]["corridor"], CORRIDOR_WASHINGTON)
 
@@ -305,7 +305,7 @@ class TestHoboken126ProviderDualCorridor(unittest.TestCase):
             s for s in HOBOKEN_126_STOPS if s.corridor == CORRIDOR_CLINTON
         )
         prov_clin = Hoboken126Provider(stops=clin_only)
-        res_c = prov_clin.resolve_stops(40.7484, -74.0302)
+        res_c = prov_clin.resolve_stops(40.7371, -74.0305)
         self.assertEqual(len(res_c), 1)
         self.assertEqual(res_c[0]["corridor"], CORRIDOR_CLINTON)
 
@@ -323,7 +323,7 @@ class TestHoboken126ProviderDualCorridor(unittest.TestCase):
             line="CUSTOM",
         )
         prov = Hoboken126Provider(stops=(custom_stop,))
-        res = prov.resolve_stops(40.7484, -74.0302)
+        res = prov.resolve_stops(40.7371, -74.0305)
         self.assertEqual(len(res), 1)
         self.assertEqual(res[0]["id"], "90001")
 
@@ -336,48 +336,42 @@ class TestHoboken126ProviderOverrides(unittest.TestCase):
 
     def test_overrides_string_ids_enrichment(self) -> None:
         """String stop IDs in overrides are enriched with catalog metadata."""
-        overrides = ["20512", "20494"]
-        stops = self.provider.resolve_stops(
-            40.7371, -74.0305, overrides=overrides
-        )
+        overrides = ["20508", "20491"]
+        stops = self.provider.resolve_stops(40.7371, -74.0305, overrides=overrides)
         self.assertEqual(len(stops), 2)
-        self.assertEqual(stops[0]["id"], "20512")
-        self.assertEqual(stops[0]["name"], "Washington & 9th")
-        self.assertEqual(stops[0]["subtitle"], "Stop #20512 • via Lincoln Tunnel")
-        self.assertEqual(stops[0]["walk_min"], 3)
-        self.assertEqual(stops[0]["distance_m"], 259)
+        self.assertEqual(stops[0]["id"], "20508")
+        self.assertEqual(stops[0]["name"], "Washington & 1st")
+        self.assertEqual(stops[0]["subtitle"], "Stop #20508 • via Washington St")
+        self.assertEqual(stops[0]["walk_min"], 0)
+        self.assertEqual(stops[0]["distance_m"], 0)
 
-        self.assertEqual(stops[1]["id"], "20494")
-        self.assertEqual(stops[1]["name"], "Clinton & 9th")
-        self.assertEqual(stops[1]["subtitle"], "Stop #20494 • via Clinton Ave")
-        self.assertEqual(stops[1]["walk_min"], 3)
-        self.assertEqual(stops[1]["distance_m"], 276)
+        self.assertEqual(stops[1]["id"], "20491")
+        self.assertEqual(stops[1]["name"], "Clinton & 1st")
+        self.assertEqual(stops[1]["subtitle"], "Stop #20491 • via Clinton Ave")
+        self.assertEqual(stops[1]["walk_min"], 6)
+        self.assertEqual(stops[1]["distance_m"], 518)
 
     def test_overrides_numeric_int_conversion(self) -> None:
         """Integer IDs in overrides are converted cleanly to strings."""
-        overrides: list[Any] = [20512, 20494]
-        stops = self.provider.resolve_stops(
-            40.7371, -74.0305, overrides=overrides
-        )
+        overrides: list[Any] = [20508, 20491]
+        stops = self.provider.resolve_stops(40.7371, -74.0305, overrides=overrides)
         self.assertEqual(len(stops), 2)
-        self.assertEqual(stops[0]["id"], "20512")
-        self.assertEqual(stops[1]["id"], "20494")
+        self.assertEqual(stops[0]["id"], "20508")
+        self.assertEqual(stops[1]["id"], "20491")
 
     def test_overrides_dict_partial_enrichment(self) -> None:
         """Dict with partial keys has remaining fields enriched from catalog."""
-        overrides = [{"id": "20512"}]
-        stops = self.provider.resolve_stops(
-            40.7371, -74.0305, overrides=overrides
-        )
+        overrides = [{"id": "20508"}]
+        stops = self.provider.resolve_stops(40.7371, -74.0305, overrides=overrides)
         self.assertEqual(len(stops), 1)
-        self.assertEqual(stops[0]["id"], "20512")
-        self.assertEqual(stops[0]["name"], "Washington & 9th")
-        self.assertEqual(stops[0]["subtitle"], "Stop #20512 • via Lincoln Tunnel")
+        self.assertEqual(stops[0]["id"], "20508")
+        self.assertEqual(stops[0]["name"], "Washington & 1st")
+        self.assertEqual(stops[0]["subtitle"], "Stop #20508 • via Washington St")
         self.assertEqual(stops[0]["line"], "126")
         self.assertEqual(stops[0]["direction"], "inbound")
         self.assertEqual(stops[0]["corridor"], "washington")
-        self.assertEqual(stops[0]["walk_min"], 3)
-        self.assertEqual(stops[0]["distance_m"], 259)
+        self.assertEqual(stops[0]["walk_min"], 0)
+        self.assertEqual(stops[0]["distance_m"], 0)
 
     def test_overrides_dict_custom_fields_preserved(self) -> None:
         """Custom stop not in catalog preserves all explicit fields."""
@@ -393,9 +387,7 @@ class TestHoboken126ProviderOverrides(unittest.TestCase):
                 "corridor": "willow",
             }
         ]
-        stops = self.provider.resolve_stops(
-            40.7371, -74.0305, overrides=overrides
-        )
+        stops = self.provider.resolve_stops(40.7371, -74.0305, overrides=overrides)
         self.assertEqual(len(stops), 1)
         self.assertEqual(stops[0]["id"], "99999")
         self.assertEqual(stops[0]["name"], "Custom 10th St Stop")
@@ -415,13 +407,11 @@ class TestHoboken126ProviderOverrides(unittest.TestCase):
 
     def test_overrides_order_preservation(self) -> None:
         """Overrides preserve the exact sequence specified by the caller."""
-        overrides = ["20494", "20512"]  # Clinton first, Washington second
-        stops = self.provider.resolve_stops(
-            40.7371, -74.0305, overrides=overrides
-        )
+        overrides = ["20491", "20508"]  # Clinton first, Washington second
+        stops = self.provider.resolve_stops(40.7371, -74.0305, overrides=overrides)
         self.assertEqual(len(stops), 2)
-        self.assertEqual(stops[0]["id"], "20494")
-        self.assertEqual(stops[1]["id"], "20512")
+        self.assertEqual(stops[0]["id"], "20491")
+        self.assertEqual(stops[1]["id"], "20508")
 
     def test_empty_overrides_falls_back_to_discovery(self) -> None:
         """Empty overrides list or None falls back to geometric discovery."""
@@ -435,61 +425,61 @@ class TestHoboken126ProviderOverrides(unittest.TestCase):
         # Not a list
         with self.assertRaises(ValueError):
             self.provider.resolve_stops(
-                40.7484,
-                -74.030,
+                40.7371,
+                -74.0305,
                 overrides="invalid",  # type: ignore[arg-type]
             )
 
         # Exceeds max count 16
         with self.assertRaises(ValueError):
-            self.provider.resolve_stops(40.7484, -74.030, overrides=["20512"] * 17)
+            self.provider.resolve_stops(40.7371, -74.0305, overrides=["20512"] * 17)
 
         # Dict missing 'id' key
         with self.assertRaises(ValueError):
-            self.provider.resolve_stops(40.7484, -74.030, overrides=[{"name": "No ID"}])
+            self.provider.resolve_stops(
+                40.7371, -74.0305, overrides=[{"name": "No ID"}]
+            )
 
         # Empty ID string
         with self.assertRaises(ValueError):
-            self.provider.resolve_stops(40.7484, -74.030, overrides=[{"id": "   "}])
+            self.provider.resolve_stops(40.7371, -74.0305, overrides=[{"id": "   "}])
         with self.assertRaises(ValueError):
-            self.provider.resolve_stops(40.7484, -74.030, overrides=["   "])
+            self.provider.resolve_stops(40.7371, -74.0305, overrides=["   "])
 
         # Bool item
         with self.assertRaises(ValueError):
             self.provider.resolve_stops(
-                40.7484,
-                -74.030,
+                40.7371,
+                -74.0305,
                 overrides=[True],  # type: ignore[list-item]
             )
 
         # Invalid walk_min out of range
         with self.assertRaises(ValueError):
             self.provider.resolve_stops(
-                40.7484, -74.030, overrides=[{"id": "20512", "walk_min": 0}]
+                40.7371, -74.0305, overrides=[{"id": "20512", "walk_min": 0}]
             )
         with self.assertRaises(ValueError):
             self.provider.resolve_stops(
-                40.7484, -74.030, overrides=[{"id": "20512", "walk_min": 200}]
+                40.7371, -74.0305, overrides=[{"id": "20512", "walk_min": 200}]
             )
 
         # Invalid distance_m out of range
         with self.assertRaises(ValueError):
             self.provider.resolve_stops(
-                40.7484, -74.030, overrides=[{"id": "20512", "distance_m": -1}]
+                40.7371, -74.0305, overrides=[{"id": "20512", "distance_m": -1}]
             )
         with self.assertRaises(ValueError):
             self.provider.resolve_stops(
-                40.7484,
-                -74.030,
+                40.7371,
+                -74.0305,
                 overrides=[{"id": "20512", "distance_m": 60000}],
             )
 
     def test_overrides_unknown_string_id(self) -> None:
         """Unknown string stop ID generates fallback custom dictionary."""
         overrides = ["unknown_stop_123"]
-        stops = self.provider.resolve_stops(
-            40.7371, -74.0305, overrides=overrides
-        )
+        stops = self.provider.resolve_stops(40.7371, -74.0305, overrides=overrides)
         self.assertEqual(len(stops), 1)
         self.assertEqual(stops[0]["id"], "unknown_stop_123")
         self.assertEqual(stops[0]["name"], "Stop #unknown_stop_123")
@@ -502,17 +492,15 @@ class TestHoboken126ProviderOverrides(unittest.TestCase):
         """Unrecognized item type raises ValueError."""
         with self.assertRaises(ValueError):
             self.provider.resolve_stops(
-                40.7484,
-                -74.030,
+                40.7371,
+                -74.0305,
                 overrides=[None],  # type: ignore[list-item]
             )
 
     def test_overrides_dict_custom_lat_lon(self) -> None:
         """Explicit custom lat and lon in override dict are preserved."""
-        overrides = [{"id": "20512", "lat": 40.75, "lon": -74.03}]
-        stops = self.provider.resolve_stops(
-            40.7371, -74.0305, overrides=overrides
-        )
+        overrides = [{"id": "20508", "lat": 40.75, "lon": -74.03}]
+        stops = self.provider.resolve_stops(40.7371, -74.0305, overrides=overrides)
         self.assertEqual(len(stops), 1)
         self.assertEqual(stops[0]["lat"], 40.75)
         self.assertEqual(stops[0]["lon"], -74.03)
@@ -548,32 +536,32 @@ class TestHoboken126ProviderBoundariesAndErrors(unittest.TestCase):
     def test_invalid_coordinates_raise_value_error(self) -> None:
         """NaN, Inf, booleans, and out-of-range coords raise ValueError."""
         with self.assertRaises(ValueError):
-            self.provider.resolve_stops(float("nan"), -74.030)
+            self.provider.resolve_stops(float("nan"), -74.0305)
         with self.assertRaises(ValueError):
-            self.provider.resolve_stops(40.748, float("nan"))
+            self.provider.resolve_stops(40.7371, float("nan"))
         with self.assertRaises(ValueError):
-            self.provider.resolve_stops(float("inf"), -74.030)
+            self.provider.resolve_stops(float("inf"), -74.0305)
         with self.assertRaises(ValueError):
-            self.provider.resolve_stops(40.748, float("-inf"))
+            self.provider.resolve_stops(40.7371, float("-inf"))
         with self.assertRaises(ValueError):
-            self.provider.resolve_stops(95.0, -74.030)
+            self.provider.resolve_stops(95.0, -74.0305)
         with self.assertRaises(ValueError):
-            self.provider.resolve_stops(-95.0, -74.030)
+            self.provider.resolve_stops(-95.0, -74.0305)
         with self.assertRaises(ValueError):
-            self.provider.resolve_stops(40.748, 190.0)
+            self.provider.resolve_stops(40.7371, 190.0)
         with self.assertRaises(ValueError):
-            self.provider.resolve_stops(40.748, -190.0)
+            self.provider.resolve_stops(40.7371, -190.0)
         with self.assertRaises(ValueError):
-            self.provider.resolve_stops(True, -74.030)  # type: ignore[arg-type]
+            self.provider.resolve_stops(True, -74.0305)  # type: ignore[arg-type]
         with self.assertRaises(ValueError):
-            self.provider.resolve_stops(40.748, False)  # type: ignore[arg-type]
+            self.provider.resolve_stops(40.7371, False)  # type: ignore[arg-type]
 
     def test_unsupported_route_raises_value_error(self) -> None:
         """Hoboken126Provider raises ValueError when route is not 126."""
         with self.assertRaises(ValueError):
-            self.provider.resolve_stops(40.7484, -74.0302, route="85")
+            self.provider.resolve_stops(40.7371, -74.0305, route="85")
         with self.assertRaises(ValueError):
-            self.provider.resolve_stops(40.7484, -74.0302, route="M15")
+            self.provider.resolve_stops(40.7371, -74.0305, route="M15")
 
 
 class TestTransitProviderRegistryAndFactory(unittest.TestCase):

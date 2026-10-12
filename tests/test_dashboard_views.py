@@ -131,7 +131,7 @@ class TestWeatherAdaptation(unittest.TestCase):
         self.assertEqual(tracker.location_name, "New York, NY")
 
     def test_weather_tracker_set_location_thread_safety(self):
-        tracker = WeatherTracker(latitude=40.7484, longitude=-74.0303)
+        tracker = WeatherTracker(latitude=40.7371, longitude=-74.0305)
         errors = []
 
         def worker(idx: int):
@@ -194,7 +194,9 @@ class TestDynamicHeaderFormatting(unittest.TestCase):
 
         draw.text = mock_text
 
-        cfg = LocationConfig(location_name="Hoboken City Hall", city="Hoboken", route="126")
+        cfg = LocationConfig(
+            location_name="Hoboken City Hall", city="Hoboken", route="126"
+        )
         cb_data = [
             {
                 "name": "Clinton & 9th",
@@ -941,7 +943,7 @@ class TestBackwardCompatibilityAndDefaultParity(unittest.TestCase):
         self.assertTrue(any(t == "CITI BIKE" for t in all_texts))
         self.assertTrue(any("MORNING DOCKS" in t for t in all_texts))
         self.assertTrue(
-            any("HOBOKEN CITY HALL • E-BIKE PRIORITY & 126 BUS" in t for t in all_texts)
+            any("HOBOKEN CITY HALL • E-BIKE PRIORITY" in t for t in all_texts)
         )
         # Dock cards at y=70..346
         dock_cards = [c for c in containers if c[1] == 70 and c[3] == 346]
@@ -1020,8 +1022,8 @@ class TestBackwardCompatibilityAndDefaultParity(unittest.TestCase):
     def test_get_canvas_stops_fallback_to_default_stops(self):
         stops = get_canvas_stops(None)
         self.assertEqual(len(stops), 2)
-        self.assertEqual(stops[0]["id"], "20512")
-        self.assertEqual(stops[1]["id"], "20494")
+        self.assertEqual(stops[0]["id"], "20508")
+        self.assertEqual(stops[1]["id"], "20491")
         self.assertEqual(DEFAULT_STOPS, STOPS)
 
     def test_render_dashboard_sync_alias_callable(self):

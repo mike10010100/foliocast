@@ -165,7 +165,7 @@ X-Tracker-Policy: v=1;phase=peak;until=1760103000;suspend=0;session=90;fast=600;
 ### 2.6 Location Configuration & Multi-Modal Transit Auto-Discovery (`server/location.py`, `server/citibike_discovery.py`, `server/transit_provider.py`)
 - **Location Store & Atomic Persistence**: `LocationConfigStore` (`server/location.py`) manages the active coordinates, address, and transit preferences. Writes use thread-isolated temporary files (`.tmp.<pid>.<tid>.<uuid>`) before atomic rename, preventing multi-threaded collisions. Changes on disk are reloaded automatically via file modification timestamp (`mtime`) checks.
 - **Layered Precedence**:
-  1. Default: Hoboken City Hall, Hoboken, NJ (`40.7371, -74.0305`) with 100% backward compatibility.
+  1. Default: Hoboken City Hall, Hoboken, NJ (`40.7371, -74.0305`).
   2. File: `config/location.json` (or path in `$LOCATION_CONFIG`).
   3. Environment variables: `TRACKER_LATITUDE`, `TRACKER_LONGITUDE`, `TRACKER_LOCATION_NAME`, `TRACKER_ADDRESS`, `TRACKER_CITY`, `TRACKER_STATE`.
 - **Citi Bike GBFS Auto-Discovery**: `CitiBikeDiscovery` (`server/citibike_discovery.py`) parses live GBFS feeds with 24-hour disk caching (`cache/citibike_stations.json`). A bundled seed database (`server/data/citibike_stations_seed.json`) with 2,519 compacted stations across NYC, Hoboken, and Jersey City ensures deterministic offline operation and zero CI network dependence.

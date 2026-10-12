@@ -119,11 +119,11 @@ class TestErrorStateRendering(unittest.TestCase):
 
         out = "/tmp/test_error_view.png"
         render_dashboard(
-            {"20512": [], "20494": []},
+            {"20508": [], "20491": []},
             citibike_data=CitiBikeTracker().get_mock_data(),
             output_path=out,
             view="evening",
-            stop_status={"20512": STATUS_ERROR, "20494": STATUS_ERROR},
+            stop_status={"20508": STATUS_ERROR, "20491": STATUS_ERROR},
         )
         self.assertTrue(os.path.exists(out))
         os.remove(out)
@@ -141,7 +141,7 @@ class TestDataCache(unittest.TestCase):
 
     def test_get_fresh_data_uses_mock_without_network(self):
         stops, status, cb = get_fresh_data(use_mock=True)
-        self.assertIn("20512", stops)
+        self.assertIn("20508", stops)
         self.assertTrue(all(v == "ok" for v in status.values()))
         self.assertTrue(len(cb) > 0)
 
@@ -206,8 +206,8 @@ class TestDataCache(unittest.TestCase):
             with patch.object(server, "cb_tracker") as cb:
                 cb.get_snapshot.return_value = snap
                 stops, status, data = get_fresh_data(use_mock=False)
-        self.assertIn("20512", stops)
-        self.assertEqual(status["20512"], "ok")
+        self.assertIn("20508", stops)
+        self.assertEqual(status["20508"], "ok")
         self.assertEqual(data[0]["name"], "X")
 
     def test_get_fresh_data_citibike_exception_falls_back_to_mock(self):
@@ -246,8 +246,8 @@ class TestDataCache(unittest.TestCase):
         ):
             cb.get_station_status.return_value = []
             stops, status, _data = get_fresh_data(use_mock=False)
-        self.assertEqual(status["20512"], "ok")
-        self.assertEqual(stops["20512"][0]["eta"], "in 5 mins (8:35 AM)")
+        self.assertEqual(status["20508"], "ok")
+        self.assertEqual(stops["20508"][0]["eta"], "in 5 mins (8:35 AM)")
 
     def test_data_cache_ttl_follows_schedule_and_interactive(self):
         from unittest.mock import patch

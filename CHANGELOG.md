@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.40.1] - 2026-10-11
+
+### Changed
+
+- **Scrub Personal Location Defaults & Anonymize Civic Fallbacks** (`server/location.py`, `server/weather.py`, `server/morning_view.py`, `server/evening_view.py`, `config/location.example.json`):
+  - Replaced hardcoded personal address defaults with municipal civic landmark: **Hoboken City Hall** (`94 Washington St`, `40.7371, -74.0305`).
+  - Anonymized default dashboard header banners to civic labels (`HOBOKEN CITY HALL • E-BIKE PRIORITY & 126 BUS`).
+  - Updated all documentation examples, API schemas, and test suites to use public municipal coordinates and stops.
+
+---
+
 ## [1.40.0] - 2026-10-11
 
 ### Added
@@ -14,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Location Configuration & Store Architecture** (`server/location.py`, `server/paths.py`, `config/location.example.json`):
   - Added `LocationConfig` dataclass supporting user-configured coordinates, location names, addresses, routes, destinations, and walking distance thresholds.
   - Built thread-safe `LocationConfigStore` supporting stat-based hot reload, atomic temporary-file replacement, and multi-tier configuration precedence (hardcoded defaults -> `config/location.json` / `$LOCATION_CONFIG` -> `TRACKER_*` environment variables).
-  - Maintained 100% backward compatibility by defaulting to Hoboken City Hall, Hoboken, NJ (`40.7371, -74.0305`) with Route 126 and Hoboken Citi Bike stations when no config is provided.
+  - Provided clean out-of-the-box defaults for Hoboken, NJ with Route 126 and Hoboken Citi Bike stations when no config is provided.
   - Committed documented configuration template in `config/location.example.json`.
 
 - **Live Location & Transit Management REST API** (`server/server.py`):

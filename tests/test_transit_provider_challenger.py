@@ -355,8 +355,8 @@ class TestConcurrencyStress(unittest.TestCase):
                 try:
                     mode = (tid + i) % 7
                     if mode == 0:
-                        # Hoboken City Hall default
-                        stops = provider.resolve_stops(40.7371, -74.0305)
+                        # Midtown Hoboken 9th St
+                        stops = provider.resolve_stops(40.7478, -74.0280)
                         if [s["id"] for s in stops] != ["20512", "20494"]:
                             errors.append(
                                 f"Thread {tid} mode 0 mismatch: {[s['id'] for s in stops]}"
@@ -378,7 +378,7 @@ class TestConcurrencyStress(unittest.TestCase):
                     elif mode == 3:
                         # Explicit string overrides
                         stops = provider.resolve_stops(
-                            40.7484, -74.0303, overrides=["20510", "20492"]
+                            40.7371, -74.0305, overrides=["20510", "20492"]
                         )
                         if [s["id"] for s in stops] != ["20510", "20492"]:
                             errors.append(
@@ -388,8 +388,8 @@ class TestConcurrencyStress(unittest.TestCase):
                         # Thread-unique custom dict override
                         unique_id = f"STOP_{tid}_{i}"
                         stops = provider.resolve_stops(
-                            40.7484,
-                            -74.0303,
+                            40.7371,
+                            -74.0305,
                             overrides=[
                                 {
                                     "id": unique_id,

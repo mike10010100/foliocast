@@ -357,7 +357,7 @@ def _default_stations_as_catalog() -> list[Any]:
     res: list[dict[str, Any]] = []
     for s in DEFAULT_STATIONS:
         sid = s["id"]
-        c = coords.get(sid, (40.7484, -74.0303, 20, ""))
+        c = coords.get(sid, (40.7371, -74.0305, 20, ""))
         res.append(
             {
                 "station_id": sid,
