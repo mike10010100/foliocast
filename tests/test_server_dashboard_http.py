@@ -569,7 +569,7 @@ class TestMdnsAdvertiser(unittest.TestCase):
                 self.assertIsNotNone(info)
                 self.assertIn("info", registered)
                 self.assertEqual(
-                    registered["info"]["kwargs"]["server"], "transittracker.local."
+                    registered["info"]["kwargs"]["server"], "foliocast.local."
                 )
             finally:
                 discovery.ZEROCONF_AVAILABLE = original_flag
@@ -655,9 +655,9 @@ class TestUDPDiscoveryResponder(unittest.TestCase):
             client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             client.settimeout(3)
             try:
-                client.sendto(b"TRANSIT_TRACKER_DISCOVER\n", ("127.0.0.1", port))
+                client.sendto(b"FOLIOCAST_DISCOVER\n", ("127.0.0.1", port))
                 data, _addr = client.recvfrom(1024)
-                self.assertIn(b"TRANSIT_TRACKER_OFFER", data)
+                self.assertIn(b"FOLIOCAST_OFFER", data)
                 self.assertIn(b"9.9.9", data)
             finally:
                 client.close()

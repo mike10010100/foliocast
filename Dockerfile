@@ -28,11 +28,13 @@ RUN --mount=type=secret,id=ota_signing_key \
         exit 1; \
     fi; \
     CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=7 \
-        go build -ldflags="-s -w -X main.Version=${VERSION} -X main.OTAPublicKey=${PUB}" -o /out/tracker-arm .; \
+        go build -ldflags="-s -w -X main.Version=${VERSION} -X main.OTAPublicKey=${PUB}" -o /out/foliocast-arm .; \
+    cp /out/foliocast-arm /out/tracker-arm; \
     if [ -n "$PUB" ]; then \
-        go run ./cmd/otasign sign -key "$KEY" -version "$VERSION" -in /out/tracker-arm -out /out/tracker-arm.manifest.json; \
+        go run ./cmd/otasign sign -key "$KEY" -version "$VERSION" -in /out/foliocast-arm -out /out/foliocast-arm.manifest.json; \
+        cp /out/foliocast-arm.manifest.json /out/tracker-arm.manifest.json; \
         go run ./cmd/otasign server-cert -key "$KEY" -out-key /out/server_identity.key -out-cert /out/server_identity.cert.json; \
-        go run ./cmd/otasign verify -pub "$PUB" -manifest /out/tracker-arm.manifest.json -in /out/tracker-arm; \
+        go run ./cmd/otasign verify -pub "$PUB" -manifest /out/foliocast-arm.manifest.json -in /out/foliocast-arm; \
     fi
 
 # Stage 2: Runtime image

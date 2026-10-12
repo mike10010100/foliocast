@@ -9,13 +9,18 @@ import (
 	"strings"
 )
 
-//go:embed launcher/TransitTracker.sh
+//go:embed launcher/FolioCast.sh
 var embeddedLauncher []byte
 
 const (
-	DefaultLauncherPath = "/mnt/us/documents/TransitTracker.sh"
-	LauncherMarkerLine  = "# Name: Transit Tracker"
+	DefaultLauncherPath = "/mnt/us/documents/FolioCast.sh"
+	LauncherMarkerLine  = "# Name: FolioCast"
 )
+
+func isLauncherMarkerPresent(data []byte) bool {
+	s := string(data)
+	return strings.Contains(s, LauncherMarkerLine) || strings.Contains(s, "# Name: Transit Tracker")
+}
 
 // resolveLauncherPath scans args for -launcher or -launcher=, defaulting to DefaultLauncherPath.
 func resolveLauncherPath(args []string) string {
@@ -50,7 +55,7 @@ func selfUpdateLauncher(launcherPath string) error {
 		// File does not exist or cannot be read; do not create
 		return nil
 	}
-	if !strings.Contains(string(data), LauncherMarkerLine) {
+	if !isLauncherMarkerPresent(data) {
 		return nil
 	}
 	if bytes.Equal(data, embeddedLauncher) {

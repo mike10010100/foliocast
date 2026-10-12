@@ -110,6 +110,22 @@ func TestSelfUpdateLauncher(t *testing.T) {
 		t.Fatal("updated script must match embedded launcher")
 	}
 
+	// 3b. File exists with legacy marker -> successfully updated to FolioCast
+	legacyScript := "# Name: Transit Tracker\n# Old legacy script\n"
+	if err := os.WriteFile(target, []byte(legacyScript), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := selfUpdateLauncher(target); err != nil {
+		t.Fatalf("expected update of legacy launcher to succeed, got %v", err)
+	}
+	updatedLegacy, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(updatedLegacy), LauncherMarkerLine) {
+		t.Fatal("updated legacy script must contain new FolioCast marker line")
+	}
+
 	// 4. File already identical -> no-op
 	if err := selfUpdateLauncher(target); err != nil {
 		t.Fatalf("expected nil on identical bytes, got %v", err)

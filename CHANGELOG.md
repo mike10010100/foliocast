@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.42.0] - 2026-10-12
+
+### Changed
+
+- **FolioCast Clean Slate Protocol & Service Standardization** (`server/discovery.py`, `server/server.py`, `client-go/discovery.go`, `client-go/launcher/`):
+  - Standardized UDP discovery protocol strictly on `FOLIOCAST_DISCOVER` and `FOLIOCAST_OFFER`, deprecating legacy transit tracker / bus tracker probe shims.
+  - Streamlined mDNS service registration strictly to `_foliocast._tcp.local.`.
+  - Standardized `/identity` endpoint response strictly to `{"service": "foliocast", "version": ...}`.
+  - Promoted `FolioCast.sh` to primary Kindle launcher script while maintaining `TransitTracker.sh` as a relative symlink for legacy Kindle home screen shortcut compatibility.
+  - Standardized client binary cross-compilation target to `foliocast-arm`, staging both `/foliocast-arm` and `/tracker-arm` routes on the server for zero-downtime OTA transitions.
+
+### Added
+
+- **Kindle USB One-Click Installer** (`scripts/install_kindle_usb.sh`):
+  - Created automated Kindle Paperwhite installer script to detect USB-mounted Kindle filesystems, deploy `FolioCast.sh` and `TransitTracker.sh` to documents, build and stage `foliocast-arm`, and configure `foliocast_server.txt`.
+  - Integrated script validation into `make check-sh`.
+
+---
+
 ## [1.41.0] - 2026-10-11
 
 ### Changed
