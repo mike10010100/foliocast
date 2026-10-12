@@ -7,15 +7,6 @@
     "type": "vstack",
     "children": [
       {
-        "type": "header",
-        "badge": "126",
-        "title": "HOBOKEN → NYC PORT AUTHORITY",
-        "subtitle": "NJ TRANSIT ROUTE 126 EXPRESS",
-        "show_time": true,
-        "show_battery": true,
-        "show_date": true
-      },
-      {
         "type": "bus_hero",
         "flex": 3.0,
         "stops": ["20512", "20494"],

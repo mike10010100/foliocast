@@ -13,7 +13,7 @@ Renders and delivers the transit dashboard PNG image tailored to the requesting 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `kindle` | `string` | `"standard"` | Target profile (`pw5` or `standard`). `pw5` sets landscape native resolution (1648×1236). |
-| `view` | `string` | `"auto"` | View selection: `auto`, built-ins (`morning`, `evening`, `weather`, `bus_focus`, `citibike_focus`), or any custom registered dashboard ID. |
+| `view` | `string` | `"auto"` | View selection: `auto`, built-ins (`morning`, `evening`, `weather`, or aliases `bus_focus`, `citibike_focus`), or any custom registered dashboard ID. |
 | `rotate` | `int` | `0` | Image rotation in degrees: `0`, `90`, `180`, `270`. |
 | `scale` | `float` | `1.0` | High-DPI render scaling factor. |
 | `mock` | `int` | `0` | If `1`, renders synthetic mock departures for testing. |

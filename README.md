@@ -69,7 +69,7 @@ The dashboard automatically optimizes its layout based on the time of day:
 - **☀️ Morning View (5:00 AM – 12:00 PM)**: Prioritizes Citi Bike dock availability and e-bike counts for the morning commute into Manhattan.
 - **🌙 Evening View (12:00 PM – 5:00 AM)**: Prioritizes NJ Transit Route 126 departures with real-time ETA predictions.
 - **🌦️ Weather View**: Hoboken local conditions, precipitation probability, and 4-day forecast.
-- **🎨 Modular Dashboards**: Custom views defined via JSON in `config/dashboards/` (`weather`, `bus_focus`, `citibike_focus`).
+- **🎨 Modular Dashboards**: Custom views defined via JSON in `config/dashboards/` (e.g. `weather.json`, with additional examples in `config/dashboards.example/`).
 - **🔄 Auto-Switching**: The server selects the appropriate view automatically, or you can switch manually via the touch screen or web interface.
 
 ---

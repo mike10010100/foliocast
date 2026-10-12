@@ -110,8 +110,9 @@ The server runs on standard Linux/macOS hosts, home servers, or Raspberry Pis us
   - `StaticDataSource`: Fixed key-value metrics.
   - `HttpJsonDataSource`: Queries arbitrary external JSON endpoints (e.g. Home Assistant, IoT sensors, webhook relays) with `${ENV_VAR}` header expansion, TTL caching, and JSONPath extraction (`path="attributes.temperature"`).
 - **Dashboard Registry & Hot-Reloading**:
-  - Built-in presets: `morning`, `evening`, `weather`, `bus_focus`, `citibike_focus`.
-  - User-configurable layouts stored in `config/dashboards/<id>.json`.
+  - Built-in presets: `morning`, `evening`, `weather` (with `bus_focus` and `citibike_focus` backward-compatible aliases).
+  - Ready-to-use example templates stored in `config/dashboards.example/` (e.g. `bus_focus.json`, `citibike_focus.json`).
+  - Active custom layouts stored in `config/dashboards/<id>.json`.
   - Hot-reloaded on disk modification without daemon restarts.
 
 ### 2.4 Schedule State Machine (`server/state_machine.py`, `server/schedule.py`)

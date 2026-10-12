@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.42.2] - 2026-10-12
+
+### Changed
+
+- **Streamlined Dashboard Views & Hardware Button Alignment** (`server/dashboards.py`, `server/server.py`, `server/render_dashboard.py`, `config/dashboards/`):
+  - Aligned desktop web dashboard navigation 1:1 with Kindle hardware touch buttons: `[ BUSES ]`, `[ CITI BIKE ]`, and `[ WEATHER ]`.
+  - Reorganized redundant single-service focus layouts (`bus_focus.json` and `citibike_focus.json`) into `config/dashboards.example/` as custom DSL references with dedicated documentation (`config/dashboards.example/README.md`).
+  - Added backward-compatible fallback aliases for `bus_focus` / `buses` -> `evening` and `citibike_focus` / `bikes` -> `morning` in `DashboardRegistry.get()`, `resolve_view()`, and server query routing.
+  - Cleaned up example DSL definitions by removing duplicate top header nodes to prevent vertical text collisions when combining hero widgets with full-page displays.
+
+### Fixed
+
+- **Web Dashboard UX Hazards & Accessibility Remediation** (`server/server.py`):
+  - **Non-Destructive Auto-Refresh**: Removed the hard 30-second `<meta http-equiv="refresh">` tag that wiped active user input in the Schedule JSON editor and collapsed details drawers. Implemented smart in-place image refresh (`setInterval`) that updates dashboard visuals without page reloads while inputs or editor drawers are active.
+  - **Inline Accessible Diagnostics Modal**: Replaced asynchronous `window.open()` popups (frequently blocked by modern browser popup blockers) with an accessible `<dialog id="diagModal">` container and live log viewer.
+  - **Unified Non-Blocking Notifications**: Replaced blocking native browser `alert()` dialogs with an animated `#toastNotification` status banner for all token saves, tracker toggles, fleet broadcasts, and device action queues.
+  - **Form Semantics & Accessibility Compliance**: Wrapped the control token input and action button in a semantic `<form id="tokenForm">` with `autocomplete="current-password"`, and added standard `name` and `aria-label` attributes to all fleet and schedule `<select>` controls to eliminate browser DOM audit warnings.
+  - **Responsive Fleet Table Action Cell**: Added `.device-actions-cell` CSS rule allowing action/diag/mode control groups to wrap cleanly on narrower viewports without horizontal table overflow.
+
+---
+
 ## [1.42.1] - 2026-10-12
 
 ### Fixed

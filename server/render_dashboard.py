@@ -73,9 +73,9 @@ def resolve_view(view: str = "auto", hour: Optional[int] = None) -> str:
     - 'auto': Automatically switches based on current local hour.
     """
     v = (view or "auto").lower().strip()
-    if v in ("morning", "citi", "citibike", "am"):
+    if v in ("morning", "citi", "citibike", "am", "citibike_focus", "bikes"):
         return "morning"
-    if v in ("evening", "bus", "pm", "afternoon", "night"):
+    if v in ("evening", "bus", "pm", "afternoon", "night", "bus_focus", "buses"):
         return "evening"
 
     # Check registered modular dashboards

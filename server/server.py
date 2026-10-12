@@ -1557,9 +1557,24 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 self._send_empty(400)
                 return
 
-            if raw_view in ("morning", "citi", "citibike", "am"):
+            if raw_view in (
+                "morning",
+                "citi",
+                "citibike",
+                "am",
+                "citibike_focus",
+                "bikes",
+            ):
                 view_param = "morning"
-            elif raw_view in ("evening", "bus", "pm", "afternoon", "night"):
+            elif raw_view in (
+                "evening",
+                "bus",
+                "pm",
+                "afternoon",
+                "night",
+                "bus_focus",
+                "buses",
+            ):
                 view_param = "evening"
             elif REGISTRY.get(raw_view) is not None:
                 view_param = raw_view
@@ -1883,9 +1898,9 @@ class DashboardHandler(BaseHTTPRequestHandler):
                     <td>{safe_seen}</td>
                     <td>{ver_display}</td>
                     <td>{safe_mode}</td>
-                    <td>
+                    <td class="device-actions-cell">
                         <div class="ctrl-group">
-                            <select class="device-action-select" aria-label="Action for {safe_id}">
+                            <select class="device-action-select" name="action" aria-label="Action for {safe_id}">
                                 <option value="restart">restart</option>
                                 <option value="reboot">reboot</option>
                                 <option value="update">update</option>
@@ -1894,7 +1909,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                             <button class="btn-small btn-device-action" data-client-id="{safe_id}">Action</button>
                         </div>
                         <div class="ctrl-group">
-                            <select class="device-diag-select" aria-label="Diagnostics for {safe_id}">
+                            <select class="device-diag-select" name="diag_level" aria-label="Diagnostics for {safe_id}">
                                 <option value="1">quick</option>
                                 <option value="full">full</option>
                             </select>
@@ -1902,7 +1917,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                             <button class="btn-small btn-device-view-diag" data-client-id="{safe_id}">View Diag</button>
                         </div>
                         <div class="ctrl-group">
-                            <select class="device-mode-select" aria-label="Run Mode for {safe_id}">
+                            <select class="device-mode-select" name="mode" aria-label="Run Mode for {safe_id}">
                                 <option value="resident">resident</option>
                                 <option value="oneshot">oneshot</option>
                                 <option value="sleep">sleep</option>
@@ -2016,7 +2031,6 @@ class DashboardHandler(BaseHTTPRequestHandler):
 <html>
 <head>
     <title>NJ Transit 126 &amp; Citi Bike Tracker</title>
-    <meta http-equiv="refresh" content="30">
     <style>
         body {{
             background: #222;
@@ -2117,6 +2131,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
             border-bottom: 1px solid #3a3a3a;
             white-space: nowrap;
         }}
+        td.device-actions-cell {{
+            white-space: normal;
+        }}
+        .device-actions-cell .ctrl-group {{
+            margin-bottom: 4px;
+        }}
         table.fleet-table th {{
             background: #333;
             color: #bbb;
@@ -2142,6 +2162,71 @@ class DashboardHandler(BaseHTTPRequestHandler):
         button.btn-small {{
             padding: 4px 8px;
             font-size: 12px;
+        }}
+        #toastNotification {{
+            display: none;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10000;
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #fff;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+            opacity: 0;
+            transition: opacity 0.25s ease, transform 0.25s ease;
+            transform: translateY(-8px);
+            pointer-events: none;
+        }}
+        #toastNotification.show {{
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }}
+        dialog#diagModal {{
+            background: #1e1e1e;
+            color: #eee;
+            border: 1px solid #444;
+            border-radius: 8px;
+            max-width: 90vw;
+            width: 800px;
+            max-height: 85vh;
+            padding: 0;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
+        }}
+        dialog#diagModal::backdrop {{
+            background: rgba(0, 0, 0, 0.7);
+        }}
+        .diag-modal-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: #2a2a2a;
+            border-bottom: 1px solid #444;
+        }}
+        .diag-modal-header h3 {{
+            margin: 0;
+            font-size: 15px;
+            color: #fff;
+        }}
+        .diag-modal-body {{
+            padding: 16px;
+            overflow-y: auto;
+            max-height: calc(85vh - 60px);
+        }}
+        .diag-modal-body pre {{
+            margin: 0;
+            background: #111;
+            color: #51cf66;
+            padding: 12px;
+            border-radius: 4px;
+            font-family: SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-break: break-word;
         }}
         .schedule-section {{
             width: 95vw;
@@ -2219,13 +2304,23 @@ class DashboardHandler(BaseHTTPRequestHandler):
 </head>
 
 <body>
+    <div id="toastNotification" role="alert" aria-live="polite"></div>
+    <dialog id="diagModal" aria-label="System Diagnostics">
+        <div class="diag-modal-header">
+            <h3 id="diagModalTitle">System Diagnostics</h3>
+            <button type="button" class="btn-small" id="closeDiagBtn" aria-label="Close Diagnostics">Close</button>
+        </div>
+        <div class="diag-modal-body">
+            <pre id="diagModalContent">Loading diagnostics...</pre>
+        </div>
+    </dialog>
     <img src="{dashboard_img_src}" alt="Transit Dashboard" />
     <div class="status">Status: {status_badge}{batt_html}{phase_html}</div>
-    <div class="controls">
-        <input type="password" id="tokenInput" placeholder="Control Token" />
-        <button id="saveTokenBtn">Save Token</button>
-        <button id="toggleBtn">{"Resume Tracker" if tracker_stopped else "Stop Kindle Tracker"}</button>
-    </div>
+    <form id="tokenForm" class="controls" onsubmit="return false;">
+        <input type="password" id="tokenInput" name="tracker_token" placeholder="Control Token" autocomplete="current-password" aria-label="Control Token" />
+        <button type="submit" id="saveTokenBtn">Save Token</button>
+        <button type="button" id="toggleBtn">{"Resume Tracker" if tracker_stopped else "Stop Kindle Tracker"}</button>
+    </form>
     <div class="links">
         <a href="/diag" id="diagLink">View Diagnostics</a>
     </div>
@@ -2256,11 +2351,11 @@ class DashboardHandler(BaseHTTPRequestHandler):
         <div class="sched-toolbar">
             <span style="font-weight:600;">Quick Override:</span>
             <div class="ctrl-group">
-                <select id="schedPhaseSelect" aria-label="Schedule Phase Override">
+                <select id="schedPhaseSelect" name="sched_phase" aria-label="Schedule Phase Override">
                     {phase_select_html}
                 </select>
                 <label style="display:flex;align-items:center;gap:4px;font-size:12px;margin:0 4px;cursor:pointer;">
-                    <input type="checkbox" id="schedFastPollCheck" {"checked" if active_force_fast else ""}> Fast Poll (60s)
+                    <input type="checkbox" id="schedFastPollCheck" name="sched_fast_poll" aria-label="Fast Poll (60s)" {"checked" if active_force_fast else ""}> Fast Poll (60s)
                 </label>
                 <button class="btn-small" id="applySchedOverrideBtn">Apply Override</button>
                 <button class="btn-small" id="clearSchedOverrideBtn">Clear Override</button>
@@ -2291,7 +2386,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                     &#9998; Edit Schedule JSON Configuration
                 </summary>
                 <div style="margin-top:10px;">
-                    <textarea id="schedConfigText" rows="16" spellcheck="false">{sched_json_pretty}</textarea>
+                    <textarea id="schedConfigText" name="sched_config" aria-label="Schedule JSON Configuration" rows="16" spellcheck="false">{sched_json_pretty}</textarea>
                     <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap;">
                         <button class="btn-small" id="saveSchedBtn" style="background:#2b8a3e;border-color:#2b8a3e;font-weight:600;">Save &amp; Apply Schedule</button>
                         <button class="btn-small" id="resetSchedBtn">Reset to Defaults</button>
@@ -2313,7 +2408,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         <div class="broadcast-toolbar">
             <span style="font-weight:600;">Broadcast Controls:</span>
             <div class="ctrl-group">
-                <select id="broadcastActionSelect" aria-label="Broadcast Action">
+                <select id="broadcastActionSelect" name="broadcast_action" aria-label="Broadcast Action">
                     <option value="restart">restart</option>
                     <option value="reboot">reboot</option>
                     <option value="update">update</option>
@@ -2322,14 +2417,14 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 <button class="btn-small" id="broadcastActionBtn">Broadcast Action</button>
             </div>
             <div class="ctrl-group">
-                <select id="broadcastDiagSelect" aria-label="Broadcast Diagnostics">
+                <select id="broadcastDiagSelect" name="broadcast_diag" aria-label="Broadcast Diagnostics">
                     <option value="1">quick</option>
                     <option value="full">full</option>
                 </select>
                 <button class="btn-small" id="broadcastDiagBtn">Broadcast Diag</button>
             </div>
             <div class="ctrl-group">
-                <select id="broadcastModeSelect" aria-label="Broadcast Run Mode">
+                <select id="broadcastModeSelect" name="broadcast_mode" aria-label="Broadcast Run Mode">
                     <option value="resident">resident</option>
                     <option value="oneshot">oneshot</option>
                     <option value="sleep">sleep</option>
@@ -2363,10 +2458,73 @@ class DashboardHandler(BaseHTTPRequestHandler):
         const tokenInput = document.getElementById("tokenInput");
         const savedToken = localStorage.getItem("tracker_token") || "";
         tokenInput.value = savedToken;
-        document.getElementById("saveTokenBtn").onclick = () => {{
+
+        function showToast(message, isError = false, duration = 3000) {{
+            const toast = document.getElementById("toastNotification");
+            if (!toast) return;
+            toast.textContent = message;
+            toast.style.background = isError ? "#c92a2a" : "#2b8a3e";
+            toast.classList.add("show");
+            if (toast._timer) clearTimeout(toast._timer);
+            toast._timer = setTimeout(() => {{
+                toast.classList.remove("show");
+            }}, duration);
+        }}
+
+        const diagModal = document.getElementById("diagModal");
+        const diagModalTitle = document.getElementById("diagModalTitle");
+        const diagModalContent = document.getElementById("diagModalContent");
+        const closeDiagBtn = document.getElementById("closeDiagBtn");
+
+        if (closeDiagBtn && diagModal) {{
+            closeDiagBtn.onclick = () => diagModal.close();
+            diagModal.onclick = (e) => {{
+                if (e.target === diagModal) diagModal.close();
+            }};
+        }}
+
+        async function openDiagnosticsModal(url, title = "System Diagnostics") {{
+            if (!diagModal) return;
+            if (diagModalTitle) diagModalTitle.textContent = title;
+            if (diagModalContent) diagModalContent.textContent = "Loading diagnostics...";
+            if (typeof diagModal.showModal === "function") {{
+                diagModal.showModal();
+            }} else {{
+                diagModal.style.display = "block";
+            }}
+            const tok = getAuthToken();
+            try {{
+                const res = await fetch(url, {{
+                    headers: {{ "X-Tracker-Token": tok }}
+                }});
+                if (res.ok) {{
+                    const text = await res.text();
+                    if (diagModalContent) diagModalContent.textContent = text;
+                }} else if (res.status === 404) {{
+                    if (diagModalContent) diagModalContent.textContent = "No diagnostics available yet for this target.";
+                }} else {{
+                    if (diagModalContent) diagModalContent.textContent = "Diagnostics access denied: HTTP " + res.status;
+                }}
+            }} catch (err) {{
+                if (diagModalContent) diagModalContent.textContent = "Network error loading diagnostics: " + err.message;
+            }}
+        }}
+
+        document.getElementById("saveTokenBtn").onclick = (e) => {{
+            if (e) e.preventDefault();
             localStorage.setItem("tracker_token", tokenInput.value.trim());
-            alert("Token saved in browser.");
+            showToast("Token saved in browser.");
         }};
+
+        const tokenForm = document.getElementById("tokenForm");
+        if (tokenForm) {{
+            tokenForm.onsubmit = (e) => {{
+                e.preventDefault();
+                localStorage.setItem("tracker_token", tokenInput.value.trim());
+                showToast("Token saved in browser.");
+            }};
+        }}
+
         document.getElementById("toggleBtn").onclick = async () => {{
             const tok = tokenInput.value.trim();
             const action = "{"resume" if tracker_stopped else "stop"}";
@@ -2375,30 +2533,16 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 headers: {{ "X-Tracker-Token": tok }}
             }});
             if (res.ok) {{
-                window.location.reload();
+                showToast(action === "stop" ? "Kindle tracker stopped." : "Kindle tracker resumed.");
+                setTimeout(() => window.location.reload(), 500);
             }} else {{
-                alert("Action failed: HTTP " + res.status);
+                showToast("Action failed: HTTP " + res.status, true);
             }}
         }};
-        document.getElementById("diagLink").onclick = async (e) => {{
+
+        document.getElementById("diagLink").onclick = (e) => {{
             e.preventDefault();
-            const tok = tokenInput.value.trim();
-            const res = await fetch("/diag", {{
-                headers: {{ "X-Tracker-Token": tok }}
-            }});
-            if (res.ok) {{
-                const text = await res.text();
-                const w = window.open();
-                if (w) {{
-                    w.document.open();
-                    w.document.write("<pre>" + text.replace(/&/g,"&amp;").replace(/</g,"&lt;") + "</pre>");
-                    w.document.close();
-                }} else {{
-                    alert("Pop-up blocked. Open /diag manually.");
-                }}
-            }} else {{
-                alert("Diagnostics access denied: HTTP " + res.status);
-            }}
+            openDiagnosticsModal("/diag", "System Diagnostics");
         }};
 
         function getAuthToken() {{
@@ -2417,13 +2561,13 @@ class DashboardHandler(BaseHTTPRequestHandler):
                     body: JSON.stringify(data)
                 }});
                 if (res.ok) {{
-                    alert("Command sent successfully.");
-                    window.location.reload();
+                    showToast("Command sent successfully.");
+                    setTimeout(() => window.location.reload(), 600);
                 }} else {{
-                    alert("Command failed: HTTP " + res.status);
+                    showToast("Command failed: HTTP " + res.status, true);
                 }}
             }} catch (err) {{
-                alert("Network error: " + err.message);
+                showToast("Network error: " + err.message, true);
             }}
         }}
 
@@ -2433,7 +2577,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 const row = btn.closest("tr") || btn.parentElement;
                 const sel = row ? row.querySelector(".device-action-select") : null;
                 if (!sel || !sel.value) {{
-                    alert("Please select an action.");
+                    showToast("Please select an action.", true);
                     return;
                 }}
                 apiPost("/action", {{ action: sel.value, client_id: cid }});
@@ -2456,7 +2600,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 const row = btn.closest("tr") || btn.parentElement;
                 const sel = row ? row.querySelector(".device-mode-select") : null;
                 if (!sel || !sel.value) {{
-                    alert("Please select a mode.");
+                    showToast("Please select a mode.", true);
                     return;
                 }}
                 apiPost("/mode", {{ mode: sel.value, client_id: cid }});
@@ -2464,32 +2608,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
         }});
 
         document.querySelectorAll(".btn-device-view-diag").forEach(btn => {{
-            btn.addEventListener("click", async () => {{
+            btn.addEventListener("click", () => {{
                 const cid = btn.getAttribute("data-client-id");
-                const tok = getAuthToken();
                 const url = "/diag?client_id=" + encodeURIComponent(cid);
-                try {{
-                    const res = await fetch(url, {{
-                        headers: {{ "X-Tracker-Token": tok }}
-                    }});
-                    if (res.ok) {{
-                        const text = await res.text();
-                        const w = window.open();
-                        if (w) {{
-                            w.document.open();
-                            w.document.write("<pre>" + text.replace(/&/g,"&amp;").replace(/</g,"&lt;") + "</pre>");
-                            w.document.close();
-                        }} else {{
-                            alert("Pop-up blocked. Open " + url + " manually.");
-                        }}
-                    }} else if (res.status === 404) {{
-                        alert("No diagnostics available for " + cid);
-                    }} else {{
-                        alert("Diagnostics access denied: HTTP " + res.status);
-                    }}
-                }} catch (err) {{
-                    alert("Error loading diagnostics: " + err.message);
-                }}
+                openDiagnosticsModal(url, "Diagnostics: " + cid);
             }});
         }});
 
@@ -2676,6 +2798,26 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 }}
             }});
         }}
+
+        // Non-destructive auto-refresh every 30 seconds
+        setInterval(() => {{
+            const editorDetails = document.getElementById("schedEditorDetails");
+            const isEditing = (editorDetails && editorDetails.open) ||
+                document.activeElement?.tagName === "TEXTAREA" ||
+                document.activeElement?.tagName === "INPUT" ||
+                (diagModal && diagModal.open);
+
+            const dashImg = document.querySelector('img[alt="Transit Dashboard"]');
+            if (dashImg) {{
+                const url = new URL(dashImg.src, window.location.href);
+                url.searchParams.set("t", Math.floor(Date.now() / 1000));
+                dashImg.src = url.pathname + url.search;
+            }}
+
+            if (!isEditing) {{
+                window.location.reload();
+            }}
+        }}, 30000);
     </script>
 
 </body>
