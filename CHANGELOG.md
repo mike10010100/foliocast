@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.41.0] - 2026-10-11
+
+### Changed
+
+- **FolioCast Container Architecture & Stack Rebranding** (`docker-compose.yml`, `Dockerfile`, `scripts/deploy.sh`, `.github/workflows/ci.yml`):
+  - Renamed primary Docker service, container name, and image targets to `foliocast` (`foliocast:v1.41.0` and `foliocast:latest`).
+  - Migrated Docker Compose project to `foliocast` with dedicated named volume `foliocast-cache`.
+  - Updated unprivileged container runtime user and group to `foliocast`.
+  - Updated CI workflows and deployment scripts to orchestrate the `foliocast` stack.
+
+- **Dual-Stack Discovery & Identity Backward Compatibility** (`server/discovery.py`, `server/server.py`, `client-go/discovery.go`, `client-go/launcher/TransitTracker.sh`):
+  - Enabled dual UDP discovery probes and offers (`FOLIOCAST_DISCOVER` / `FOLIOCAST_OFFER` alongside `TRANSIT_TRACKER_DISCOVER` / `TRANSIT_TRACKER_OFFER`).
+  - Added dual mDNS registration for both `_foliocast._tcp.local.` and `_transittracker._tcp.local.`.
+  - Updated `/identity` endpoint to report `foliocast` service identity with backwards-compatible `legacy_service: transit-tracker`.
+  - Provided `client-go/launcher/FolioCast.sh` launcher entrypoint.
+  - Updated Go module path to `github.com/mike10010100/foliocast/client-go`.
+
+---
+
 ## [1.40.2] - 2026-10-11
 
 ### Changed

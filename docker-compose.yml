@@ -1,5 +1,7 @@
+name: foliocast
+
 services:
-  transit-tracker:
+  foliocast:
     build:
       context: .
       dockerfile: Dockerfile
@@ -12,12 +14,12 @@ services:
       # `make keygen` (or `openssl genpkey -algorithm ed25519 -out secrets/ota_ed25519.key`).
       secrets:
         - ota_signing_key
-    image: transit-tracker:${IMAGE_TAG:-latest}
-    container_name: transit-tracker
+    image: foliocast:${IMAGE_TAG:-latest}
+    container_name: foliocast
     restart: unless-stopped
     # On Linux servers (Raspberry Pi, mini PC, NAS, Unraid), network_mode: host
     # allows the container to bind directly to the LAN interface. This enables:
-    # 1. Zero-config mDNS service advertisement (_transittracker._tcp.local)
+    # 1. Zero-config mDNS service advertisement (_foliocast._tcp.local / _transittracker._tcp.local)
     # 2. Receiving Kindle UDP discovery broadcasts (port 8001) without NAT traversal
     # Note: On macOS/Windows Docker Desktop, if host networking does not expose port 8000,
     # comment out network_mode: host and uncomment the ports block below:
@@ -67,7 +69,7 @@ services:
       # Persist the GTFS static-schedule index across container recreates so the
       # 55 MB feed isn't re-downloaded and re-parsed on every deploy. Also holds
       # the auto-generated control token.
-      - tracker-cache:/app/cache
+      - foliocast-cache:/app/cache
       # Schedule state machine config (schedule.json).
       - ./config:/app/config
     healthcheck:
@@ -86,4 +88,5 @@ secrets:
     file: ${OTA_SIGNING_KEY_FILE:-/dev/null}
 
 volumes:
-  tracker-cache:
+  foliocast-cache:
+    name: foliocast-cache
