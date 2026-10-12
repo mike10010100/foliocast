@@ -113,6 +113,19 @@ CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=7 go build -C client-go \
 
 # 2. Copy launcher scripts to documents folder
 DOCUMENTS_DIR="${KINDLE_DIR}/documents"
+if [[ ! -w "${DOCUMENTS_DIR}" ]]; then
+    echo "======================================================================"
+    echo "⚠️  Permission Denied: ${DOCUMENTS_DIR} is not writable by current user."
+    echo "======================================================================"
+    echo "The Kindle filesystem was mounted by root. To grant write permission, run:"
+    echo "  sudo mount -o remount,uid=\$(id -u),gid=\$(id -g) \"${KINDLE_DIR}\""
+    echo ""
+    echo "Then re-run this script:"
+    echo "  $0"
+    echo "======================================================================"
+    exit 1
+fi
+
 echo "📂 Copying launcher to ${DOCUMENTS_DIR}/FolioCast.sh..."
 cp client-go/launcher/FolioCast.sh "${DOCUMENTS_DIR}/FolioCast.sh"
 chmod +x "${DOCUMENTS_DIR}/FolioCast.sh" 2>/dev/null || true
