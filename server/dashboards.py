@@ -397,14 +397,17 @@ class DashboardRegistry:
             is_builtin=True,
         )
         self._dashboards["weather"] = _builtin_weather_spec()
-        self._dashboards["bus_focus"] = _builtin_bus_focus_spec()
-        self._dashboards["citibike_focus"] = _builtin_citibike_focus_spec()
 
     def get(self, dashboard_id: str) -> Optional[DashboardSpec]:
         """Looks up a dashboard specification by ID, hot-reloading if changed on disk."""
         did = (dashboard_id or "").strip().lower()
         with self._lock:
             spec = self._dashboards.get(did)
+            if spec is None:
+                if did in ("bus_focus", "buses"):
+                    spec = self._dashboards.get("evening")
+                elif did in ("citibike_focus", "bikes"):
+                    spec = self._dashboards.get("morning")
             if spec and spec.file_path and os.path.exists(spec.file_path):
                 try:
                     mtime = os.path.getmtime(spec.file_path)

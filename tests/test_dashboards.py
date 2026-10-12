@@ -263,7 +263,7 @@ class TestDashboardRegistry(unittest.TestCase):
         self.assertIsNotNone(self.registry.get("weather"))
         self.assertIsNotNone(self.registry.get("bus_focus"))
         self.assertIsNotNone(self.registry.get("citibike_focus"))
-        self.assertTrue(len(self.registry.list_all()) >= 5)
+        self.assertTrue(len(self.registry.list_all()) >= 3)
 
     def test_validation_errors(self):
         with self.assertRaises(DashboardError):

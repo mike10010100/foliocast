@@ -934,6 +934,33 @@ class TestMultiDeviceWebInterface(ServerHTTPTestBase):
             body_p,
         )
 
+    def test_dashboard_accessibility_and_ux_enhancements(self):
+        status, _, body = _http_get(self.port, "/")
+        self.assertEqual(status, 200)
+        body_text = body.decode("utf-8")
+
+        # 1. No destructive 30s meta refresh
+        self.assertNotIn('http-equiv="refresh"', body_text)
+
+        # 2. Form semantics for token input
+        self.assertIn('<form id="tokenForm"', body_text)
+        self.assertIn('name="tracker_token"', body_text)
+        self.assertIn('autocomplete="current-password"', body_text)
+
+        # 3. Toast notification container
+        self.assertIn('id="toastNotification"', body_text)
+
+        # 4. Accessible modal diagnostics viewer
+        self.assertIn('<dialog id="diagModal"', body_text)
+        self.assertIn('id="diagModalTitle"', body_text)
+        self.assertIn('id="closeDiagBtn"', body_text)
+
+        # 5. Semantic form names on schedule and broadcast dropdowns
+        self.assertIn('name="sched_phase"', body_text)
+        self.assertIn('name="broadcast_action"', body_text)
+        self.assertIn('name="broadcast_diag"', body_text)
+        self.assertIn('name="broadcast_mode"', body_text)
+
     def test_csp_nonce_and_script_security(self):
         status, headers, body = _http_get(self.port, "/")
         self.assertEqual(status, 200)

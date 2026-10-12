@@ -7,15 +7,6 @@
     "type": "vstack",
     "children": [
       {
-        "type": "header",
-        "badge": "CITI BIKE",
-        "title": "HOBOKEN DOCKS & E-BIKES",
-        "subtitle": "LIVE STATION INVENTORY",
-        "show_time": true,
-        "show_battery": true,
-        "show_date": true
-      },
-      {
         "type": "citibike_hero",
         "flex": 3.0
       },

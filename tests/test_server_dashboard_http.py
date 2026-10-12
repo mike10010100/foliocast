@@ -749,8 +749,6 @@ class TestModularDashboardEndpoints(ServerHTTPTestBase):
         self.assertIn("morning", ids)
         self.assertIn("evening", ids)
         self.assertIn("weather", ids)
-        self.assertIn("bus_focus", ids)
-        self.assertIn("citibike_focus", ids)
 
     def test_get_dashboard_spec(self):
         status, _headers, body = _http_get(self.port, "/dashboards/weather")
