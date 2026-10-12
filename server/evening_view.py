@@ -1,4 +1,3 @@
-import re
 from datetime import datetime
 from typing import Any, Optional
 
@@ -13,9 +12,11 @@ from canvas import (
     draw_header_badge,
     draw_mock_badge,
     ellipsize_to_width,
+    format_hero_eta,
     get_font,
     mock_badge_width,
     parse_minutes,
+    resolve_badge,
 )
 
 
@@ -268,61 +269,43 @@ def render_evening_view(
             walk_min = stop_cfg["walk_min"]
 
             cy = y0 + (60 if is_tall else (54 if has_citibike else 68))
-            if first_min is not None:
-                if first_min == 0:
-                    cd_str = "DUE"
-                    unit_str = ""
-                else:
-                    cd_str = str(first_min)
-                    unit_str = "MIN"
-            else:
-                time_match = re.search(
-                    r"\b(\d{1,2}:\d{2}(?:\s*[AP]M)?)\b", first_eta_raw, re.IGNORECASE
-                )
-                if time_match:
-                    cd_str = time_match.group(1)
-                else:
-                    cd_str = first_eta_raw[:7].strip() if first_eta_raw else "--"
-                unit_str = ""
+            cd_str, unit_str = format_hero_eta(first_bus)
 
-            draw.text((x0 + 14, cy), cd_str, fill="black", font=font_countdown_num)
-            c_bbox = draw.textbbox((x0 + 14, cy), cd_str, font=font_countdown_num)
-            unit_x = c_bbox[2] + 6
+            if len(cd_str) >= 4:
+                font_num = get_font(
+                    (48 if is_tall else 44)
+                    if has_citibike
+                    else (54 if is_tall else 50),
+                    bold=True,
+                )
+                font_unit = get_font(
+                    (16 if is_tall else 15)
+                    if has_citibike
+                    else (18 if is_tall else 17),
+                    bold=True,
+                )
+            else:
+                font_num = font_countdown_num
+                font_unit = font_countdown_unit
+
+            draw.text((x0 + 14, cy), cd_str, fill="black", font=font_num)
+            c_bbox = draw.textbbox((x0 + 14, cy), cd_str, font=font_num)
+            unit_x = c_bbox[2] + 4
 
             if unit_str:
+                u_bbox0 = draw.textbbox((unit_x, 0), unit_str, font=font_unit)
+                unit_y = c_bbox[3] - u_bbox0[3]
                 draw.text(
-                    (unit_x, cy + (34 if has_citibike else 40)),
+                    (unit_x, unit_y),
                     unit_str,
                     fill="black",
-                    font=font_countdown_unit,
+                    font=font_unit,
                 )
 
             badge_y = cy + (14 if has_citibike else 18)
-            if first_min is not None:
-                if (
-                    "board" in first_eta_raw.lower()
-                    or "all aboard" in first_eta_raw.lower()
-                ):
-                    badge_label = "ALL ABOARD"
-                    badge_bg = "black"
-                    badge_fg = "white"
-                elif first_min <= walk_min:
-                    badge_label = "RUN! LEAVING SOON"
-                    badge_bg = "black"
-                    badge_fg = "white"
-                elif first_min <= walk_min + 3:
-                    badge_label = "WALK NOW"
-                    badge_bg = "black"
-                    badge_fg = "white"
-                elif first_min <= walk_min + 7:
-                    badge_label = "GET READY"
-                    badge_bg = "#f0f0f0"
-                    badge_fg = "black"
-                else:
-                    badge_label = "ON TIME"
-                    badge_bg = "#f0f0f0"
-                    badge_fg = "black"
-
+            badge_info = resolve_badge(first_bus, walk_min, compact=False)
+            if badge_info:
+                badge_label, badge_bg, badge_fg = badge_info
                 bb = draw.textbbox((0, 0), badge_label, font=font_badge)
                 bw = bb[2] - bb[0]
                 badge_x = x1 - bw - 24
@@ -449,12 +432,16 @@ def render_evening_view(
                     fill="#555555",
                     font=font_walk,
                 )
+                if first_min is None or first_min > 60:
+                    empty_msg = "No other departures scheduled"
+                else:
+                    empty_msg = "No further buses in next 60 min"
                 draw.text(
                     (
                         x0 + 20,
                         box_y0 + (25 if is_tall else (27 if has_citibike else 32)),
                     ),
-                    "No further buses in next 60 min",
+                    empty_msg,
                     fill="#666666",
                     font=font_detail,
                 )
