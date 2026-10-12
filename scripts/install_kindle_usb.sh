@@ -13,12 +13,35 @@ cd "${ROOT_DIR}"
 
 KINDLE_DIR="${1:-}"
 
-# Auto-detect Kindle mount point if not explicitly passed
+# 1. Identify raw Kindle block device if attached
+KINDLE_DEV=""
+if [[ -e "/dev/disk/by-label/Kindle" ]]; then
+    KINDLE_DEV="/dev/disk/by-label/Kindle"
+else
+    for dev in /dev/disk/by-id/usb-Kindle*; do
+        if [[ -e "${dev}" ]]; then
+            KINDLE_DEV="${dev}"
+            break
+        fi
+    done
+fi
+
+# 2. Check if already mounted via findmnt
+if [[ -z "${KINDLE_DIR}" && -n "${KINDLE_DEV}" ]]; then
+    target="$(findmnt -rno TARGET "${KINDLE_DEV}" 2>/dev/null || true)"
+    if [[ -n "${target}" && -d "${target}/documents" ]]; then
+        KINDLE_DIR="${target}"
+    fi
+fi
+
+# 3. Check common mount path candidates
 if [[ -z "${KINDLE_DIR}" ]]; then
     CANDIDATES=(
         "/media/${USER}/Kindle"
         "/run/media/${USER}/Kindle"
         "/media/Kindle"
+        "/mnt/Kindle"
+        "/mnt/kindle"
         "/Volumes/Kindle"
     )
     for cand in "${CANDIDATES[@]}"; do
@@ -29,19 +52,43 @@ if [[ -z "${KINDLE_DIR}" ]]; then
     done
 fi
 
+# 4. If Kindle hardware is detected but not mounted, try mounting via udisksctl
+if [[ -z "${KINDLE_DIR}" && -n "${KINDLE_DEV}" ]] && command -v udisksctl >/dev/null 2>&1; then
+    udisksctl mount -b "${KINDLE_DEV}" --no-user-interaction 2>/dev/null || true
+    target="$(findmnt -rno TARGET "${KINDLE_DEV}" 2>/dev/null || true)"
+    if [[ -n "${target}" && -d "${target}/documents" ]]; then
+        KINDLE_DIR="${target}"
+    fi
+fi
+
+# 5. Validation and troubleshooting instructions
 if [[ -z "${KINDLE_DIR}" || ! -d "${KINDLE_DIR}/documents" ]]; then
     echo "======================================================================"
-    echo "🔍 Waiting for Kindle USB Connection..."
-    echo "======================================================================"
-    echo "Please plug your Kindle Paperwhite into this machine over USB."
-    echo ""
-    echo "If your Kindle is already mounted at a custom path, run:"
-    echo "  $0 /path/to/Kindle"
-    echo ""
-    echo "Checking common mount locations:"
-    echo "  - /media/${USER}/Kindle"
-    echo "  - /run/media/${USER}/Kindle"
-    echo "  - /Volumes/Kindle"
+    if [[ -n "${KINDLE_DEV}" ]]; then
+        echo "📖 Kindle Hardware Detected (${KINDLE_DEV}), but not yet mounted!"
+        echo "======================================================================"
+        echo "Your Kindle is plugged in, but the Linux filesystem is not mounted."
+        echo ""
+        echo "To mount it, either:"
+        echo "  1. Open your File Manager (Files / Nautilus) and click 'Kindle' in the sidebar."
+        echo "  2. Or run in terminal:"
+        echo "       udisksctl mount -b ${KINDLE_DEV}"
+        echo "     (or: sudo mkdir -p /media/Kindle && sudo mount ${KINDLE_DEV} /media/Kindle)"
+        echo ""
+        echo "Then re-run: $0"
+    else
+        echo "🔍 Waiting for Kindle USB Connection..."
+        echo "======================================================================"
+        echo "Please plug your Kindle Paperwhite into this machine over USB."
+        echo ""
+        echo "If your Kindle is already mounted at a custom path, run:"
+        echo "  $0 /path/to/Kindle"
+        echo ""
+        echo "Checking common mount locations:"
+        echo "  - /media/${USER}/Kindle"
+        echo "  - /run/media/${USER}/Kindle"
+        echo "  - /Volumes/Kindle"
+    fi
     echo "======================================================================"
     exit 1
 fi
