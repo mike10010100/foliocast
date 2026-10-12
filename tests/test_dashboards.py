@@ -215,6 +215,13 @@ class TestDashboardDSL(unittest.TestCase):
         card_dry.render(self.draw, Rect(20, 20, 240, 240), ctx_rain)
         card_dry.render(self.draw, Rect(20, 20, 240, 300), ctx_rain)
 
+        # 100% precipitation edge case (compact tall and very tall)
+        wx_100 = get_mock_weather_data()
+        object.__setattr__(wx_100, "precip_prob", 100)
+        ctx_100 = RenderContext(now=datetime.now(), weather_data=wx_100)
+        card_dry.render(self.draw, Rect(20, 20, 240, 240), ctx_100)
+        card_dry.render(self.draw, Rect(20, 20, 240, 300), ctx_100)
+
     def test_transit_widgets(self):
         bus_bar = BusBarWidget()
         bus_bar.render(self.draw, Rect(20, 20, 760, 90), self.ctx)
@@ -374,3 +381,44 @@ class TestDashboardRegistry(unittest.TestCase):
             height=480,
         )
         bar.render(draw, Rect(20, 436, 780, 472), ctx_dormant)
+
+    def test_precipitation_100_percent_containment(self):
+        """
+        Regression test: When precipitation percentage hits 100%, text must not collide
+        with the card's right boundary across standard and tall layout geometries.
+        """
+        card = MetricCardWidget(
+            title="PRECIPITATION", source="precip_prob", unit="%", badge="RADAR"
+        )
+        wx_100 = get_mock_weather_data()
+        object.__setattr__(wx_100, "precip_prob", 100)
+        ctx = RenderContext(now=datetime.now(), weather_data=wx_100)
+
+        for rect in [
+            Rect(539, 72, 780, 290),  # Standard 800x480 card geometry (w=241, h=218)
+            Rect(539, 72, 780, 365),  # Tall 800x600 card geometry (w=241, h=293)
+            Rect(50, 50, 250, 280),  # Narrow 200px wide card
+        ]:
+            img = Image.new("RGB", (800, 600), "white")
+            raw_draw = ImageDraw.Draw(img)
+            captured = []
+            orig_text = raw_draw.text
+
+            def record_text(
+                xy, text, *a, _rd=raw_draw, _cap=captured, _orig=orig_text, **k
+            ):
+                bb = _rd.textbbox(xy, text, font=k.get("font"))
+                _cap.append((text, bb))
+                return _orig(xy, text, *a, **k)
+
+            raw_draw.text = record_text  # type: ignore
+            card.render(raw_draw, rect, ctx)
+
+            # Ensure all text inside card stays within right margin (rect.x1 - 14)
+            for text, bbox in captured:
+                if "100%" in text or text == "100%":
+                    self.assertLessEqual(
+                        bbox[2],
+                        rect.x1 - 14,
+                        f"Text {text!r} (right={bbox[2]}) exceeded inner margin of card {rect}",
+                    )

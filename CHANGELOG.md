@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.42.1] - 2026-10-12
+
+### Fixed
+
+- **Weather Dashboard Precipitation 100% Boundary Collision** (`server/dashboard_dsl.py`):
+  - Fixed an edge case where precipitation probability reaching 100% caused the percentage text (`100%`) to collide with or overflow past the right border of the metric card container across standard (800x480) and tall (800x600) layouts.
+  - Implemented dynamic typography fitting to scale down font size when 3-digit percentages exceed available card inner width, maintaining vertical alignment with the umbrella glyph.
+  - Right-aligned the progress meter scale `100%` label to prevent horizontal overshoot past the meter bar boundary.
+  - Added real-testing reproduction script (`scripts/reproduce_precip_collision.py`) and regression test suites in `tests/test_dashboards.py`, `tests/test_render_dashboard.py`, and `tests/test_server_dashboard_http.py`.
+
+---
+
 ## [1.42.0] - 2026-10-12
 
 ### Changed
