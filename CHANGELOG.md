@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.42.3] - 2026-10-12
+
+### Fixed
+
+- **Off-Peak Transit Countdown, Status Badge, and Horizon Copy Mismatch** (`server/canvas.py`, `server/evening_view.py`, `server/morning_view.py`, `tests/test_hero_eta_and_badges.py`):
+  - **Clock Time Hero for Far-Off Departures**: Replaced raw triple-digit minute countdowns (e.g. `160 MIN`) with human-readable departure clock times (e.g. `4:09 PM` or `2h 40m`) when next arrival is 60+ minutes away (`format_hero_eta`), with proportional typography and baseline alignment that eliminates visual glitches.
+  - **Badge Telemetry Honesty (`SCHEDULED` vs `ON TIME`)**: Centralized badge resolution (`resolve_badge`, `is_arrival_live`) across morning and evening views. Prevented unmonitored static schedule departures lacking active vehicle telemetry from claiming `ON TIME`; unmonitored trips now accurately display `SCHEDULED`.
+  - **Footer Copy Horizon Consistency**: Eliminated contradictory copy where cards with departures beyond the hour reported `"No further buses in next 60 min"`. Updated empty upcoming list copy to `"No other departures scheduled"` when the initial departure is beyond 60 minutes or unmonitored.
+  - **Real-Testing Verification & Regression Coverage**: Added end-to-end regression and unit test suite in `tests/test_hero_eta_and_badges.py` validating hero formatting, live status detection, badge resolution, and dashboard image rendering.
+
+---
+
 ## [1.42.2] - 2026-10-12
 
 ### Changed

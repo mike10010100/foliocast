@@ -1,4 +1,3 @@
-import re
 from datetime import datetime
 from typing import Any, Optional
 
@@ -14,9 +13,11 @@ from canvas import (
     draw_mock_badge,
     ellipsize_to_width,
     empty_state_message,
+    format_hero_eta,
     get_font,
     mock_badge_width,
     parse_minutes,
+    resolve_badge,
 )
 
 
@@ -643,25 +644,7 @@ def render_morning_view(
                 first_eta_raw = first_bus.get("eta", "")
                 first_min = parse_minutes(first_eta_raw)
                 cy = y0 + (62 if is_tall else 56)
-
-                if first_min is not None:
-                    if first_min == 0:
-                        cd_str = "DUE"
-                        unit_str = ""
-                    else:
-                        cd_str = str(first_min)
-                        unit_str = "MIN"
-                else:
-                    time_match = re.search(
-                        r"\b(\d{1,2}:\d{2}(?:\s*[AP]M)?)\b",
-                        first_eta_raw,
-                        re.IGNORECASE,
-                    )
-                    if time_match:
-                        cd_str = time_match.group(1)
-                    else:
-                        cd_str = first_eta_raw[:7].strip() if first_eta_raw else "--"
-                    unit_str = ""
+                cd_str, unit_str = format_hero_eta(first_bus)
 
                 f_num = (
                     get_font(44 if is_tall else 40, bold=True)
@@ -673,44 +656,31 @@ def render_morning_view(
                     if num_stops >= 3
                     else font_countdown_unit
                 )
+                if len(cd_str) >= 4 and num_stops < 3:
+                    f_num = get_font(46 if is_tall else 42, bold=True)
+                    f_unit = get_font(16 if is_tall else 15, bold=True)
+
                 x_text_offset = 12 if num_stops >= 3 else 16
                 draw.text((x0 + x_text_offset, cy), cd_str, fill="black", font=f_num)
                 c_bbox = draw.textbbox((x0 + x_text_offset, cy), cd_str, font=f_num)
                 unit_x = c_bbox[2] + 4
 
                 if unit_str:
+                    u_bbox0 = draw.textbbox((unit_x, 0), unit_str, font=f_unit)
+                    unit_y = c_bbox[3] - u_bbox0[3]
                     draw.text(
-                        (
-                            unit_x,
-                            cy
-                            + (20 if num_stops >= 3 else (34 if not is_tall else 38)),
-                        ),
+                        (unit_x, unit_y),
                         unit_str,
                         fill="black",
                         font=f_unit,
                     )
 
                 badge_y = cy + (10 if num_stops >= 3 else 14)
-                if first_min is not None:
-                    if (
-                        "board" in first_eta_raw.lower()
-                        or "all aboard" in first_eta_raw.lower()
-                    ):
-                        badge_label = "ALL ABOARD"
-                        badge_bg, badge_fg = "black", "white"
-                    elif first_min <= walk_min:
-                        badge_label = "RUN!" if num_stops >= 3 else "RUN! LEAVING SOON"
-                        badge_bg, badge_fg = "black", "white"
-                    elif first_min <= walk_min + 3:
-                        badge_label = "WALK NOW"
-                        badge_bg, badge_fg = "black", "white"
-                    elif first_min <= walk_min + 7:
-                        badge_label = "GET READY"
-                        badge_bg, badge_fg = "#f0f0f0", "black"
-                    else:
-                        badge_label = "ON TIME"
-                        badge_bg, badge_fg = "#f0f0f0", "black"
-
+                badge_info = resolve_badge(
+                    first_bus, walk_min, compact=(num_stops >= 3)
+                )
+                if badge_info:
+                    badge_label, badge_bg, badge_fg = badge_info
                     f_badge = get_font(10, bold=True) if num_stops >= 3 else font_badge
                     bb = draw.textbbox((0, 0), badge_label, font=f_badge)
                     bw = bb[2] - bb[0]
@@ -857,9 +827,13 @@ def render_morning_view(
                                 font=font_footer,
                             )
                 else:
+                    if first_min is None or first_min > 60:
+                        empty_title = "NO OTHER BUSES SCHEDULED"
+                    else:
+                        empty_title = "NO FURTHER BUSES TRACKED"
                     draw.text(
                         (inner_left, box_y0 + (12 if is_tall else 10)),
-                        "NO FURTHER BUSES TRACKED",
+                        empty_title,
                         fill="#888888",
                         font=font_footer,
                     )

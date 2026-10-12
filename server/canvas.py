@@ -1,3 +1,4 @@
+import datetime
 import math
 import os
 import re
@@ -385,6 +386,103 @@ def parse_minutes(eta_text: Optional[str]) -> Optional[int]:
     if match:
         return int(match.group(1))
     return None
+
+
+def is_arrival_live(bus: dict[str, Any]) -> bool:
+    """Determines whether a bus arrival record is backed by active real-time vehicle telemetry."""
+    if bus.get("live") is False:
+        return False
+    if bus.get("live") is True:
+        return True
+    eta_raw = str(bus.get("eta") or "")
+    if "\u25cb" in eta_raw:  # SCHED_MARK
+        return False
+    if "\u25cf" in eta_raw:  # LIVE_MARK
+        return True
+    if bus.get("vehicle_id"):
+        return True
+    return False
+
+
+def format_hero_eta(first_bus: dict[str, Any]) -> tuple[str, str]:
+    """
+    Formats the primary hero countdown digits and unit string for an arrival.
+    For arrivals under 60 minutes, returns active countdown (e.g. ('5', 'MIN') or ('DUE', '')).
+    For arrivals 60+ minutes out, formats as human-readable departure clock time (e.g. ('4:09', 'PM'))
+    or elapsed duration (e.g. ('2h 40m', '')) so users aren't confronted with '160 MIN'.
+    """
+    first_eta_raw = str(first_bus.get("eta") or "")
+    first_min = parse_minutes(first_eta_raw)
+
+    if first_min is not None:
+        if first_min == 0:
+            return "DUE", ""
+        if first_min < 60:
+            return str(first_min), "MIN"
+
+        # 60+ minutes: extract clock time if available
+        time_match = re.search(
+            r"\b(\d{1,2}:\d{2})\s*([AP]M)?\b", first_eta_raw, re.IGNORECASE
+        )
+        if time_match:
+            cd_str = time_match.group(1)
+            unit_str = time_match.group(2).upper() if time_match.group(2) else ""
+            return cd_str, unit_str
+        if first_bus.get("epoch"):
+            try:
+                dt = datetime.datetime.fromtimestamp(float(first_bus["epoch"]))
+                return dt.strftime("%I:%M").lstrip("0"), dt.strftime("%p")
+            except Exception:
+                pass
+        h = first_min // 60
+        m = first_min % 60
+        return (f"{h}h {m:02d}m" if m else f"{h}h"), ""
+
+    # first_min is None (clock time only, or non-minute status)
+    time_match = re.search(
+        r"\b(\d{1,2}:\d{2})\s*([AP]M)?\b", first_eta_raw, re.IGNORECASE
+    )
+    if time_match:
+        cd_str = time_match.group(1)
+        unit_str = time_match.group(2).upper() if time_match.group(2) else ""
+        return cd_str, unit_str
+
+    time_match_any = re.search(
+        r"\b(\d{1,2}:\d{2}(?:\s*[AP]M)?)\b", first_eta_raw, re.IGNORECASE
+    )
+    if time_match_any:
+        return time_match_any.group(1), ""
+
+    return (first_eta_raw[:7].strip() if first_eta_raw else "--"), ""
+
+
+def resolve_badge(
+    first_bus: dict[str, Any], walk_min: int, compact: bool = False
+) -> Optional[tuple[str, str, str]]:
+    """
+    Resolves the badge label, background color, and text color for an arrival card.
+    Returns (label, bg, fg) or None if no badge should be shown.
+    Distinguishes live tracked departures ('ON TIME') from unmonitored timetable runs ('SCHEDULED').
+    """
+    first_eta_raw = str(first_bus.get("eta") or "")
+    first_min = parse_minutes(first_eta_raw)
+    if first_min is None:
+        return None
+
+    if "board" in first_eta_raw.lower() or "all aboard" in first_eta_raw.lower():
+        return "ALL ABOARD", "black", "white"
+    if first_min <= walk_min:
+        label = "RUN!" if compact else "RUN! LEAVING SOON"
+        return label, "black", "white"
+    if first_min <= walk_min + 3:
+        return "WALK NOW", "black", "white"
+    if first_min <= walk_min + 7:
+        return "GET READY", "#f0f0f0", "black"
+
+    # Beyond walk + 7: check whether vehicle telemetry is actively tracking this trip
+    if is_arrival_live(first_bus):
+        return "ON TIME", "#f0f0f0", "black"
+    return "SCHEDULED", "#f0f0f0", "black"
 
 
 def draw_header_badge(
