@@ -192,7 +192,7 @@ func actionRTCSuspend(ctx context.Context) string {
 	elapsed := time.Since(before)
 
 	b.WriteString("wifi on: " + shell(ctx, "lipc-set-prop com.lab126.cmd wirelessEnable 1 2>&1; echo done") + "\n")
-	b.WriteString(fmt.Sprintf("RESULT: suspended+resumed in %s (if ~90s, the RTC wake worked)", elapsed.Round(time.Second)))
+	fmt.Fprintf(&b, "RESULT: suspended+resumed in %s (if ~90s, the RTC wake worked)", elapsed.Round(time.Second))
 	return b.String()
 }
 
@@ -368,9 +368,10 @@ func actionTouchWakeTest(ctx context.Context) string {
 	default:
 		verdict = "RTC WOKE IT (alarm cleared at ~300s) -- neither touch nor power woke the SoC"
 	}
-	b.WriteString(fmt.Sprintf(
+	fmt.Fprintf(
+		&b,
 		"RESULT: resumed after %s; rtc alarm now %q; touch moved=%v, rtc moved=%v, power moved=%v. %s",
-		elapsed.Round(time.Second), alarmAfter, touchMoved, rtcMoved, powerMoved, verdict))
+		elapsed.Round(time.Second), alarmAfter, touchMoved, rtcMoved, powerMoved, verdict)
 	return b.String()
 }
 

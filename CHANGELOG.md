@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.40.2] - 2026-10-11
+
+### Changed
+
+- **Mise Toolchain & Linter Modernization** (`.golangci.yml`, `client-go/actions.go`):
+  - Migrated `.golangci.yml` to the `version: "2"` configuration schema required by modern `golangci-lint` (v2.14.0+).
+  - Modernized `client-go/actions.go` string building to use `fmt.Fprintf` over `b.WriteString(fmt.Sprintf(...))` conforming to `staticcheck` QF1012.
+  - Verified end-to-end compatibility across Go 1.26, Python 3.11, shellcheck, and hadolint via local `mise` environment.
+
+---
+
 ## [1.40.1] - 2026-10-11
 
 ### Changed
