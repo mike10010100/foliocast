@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mike10010100/transit-tracker/client-go/internal/otasig"
+	"github.com/mike10010100/foliocast/client-go/internal/otasig"
 )
 
 // withDiscoverySeams restores discovery seams after the test.

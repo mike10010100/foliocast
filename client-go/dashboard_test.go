@@ -18,7 +18,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mike10010100/transit-tracker/client-go/internal/otasig"
+	"github.com/mike10010100/foliocast/client-go/internal/otasig"
 )
 
 // otaServer serves the binary at /tracker-arm with a signed manifest at /tracker-arm.manifest.

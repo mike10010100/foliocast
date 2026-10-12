@@ -168,14 +168,14 @@ jobs:
         run: openssl genpkey -algorithm ed25519 -out "$RUNNER_TEMP/ci_ota.key"
 
       - name: Build image
-        run: DOCKER_BUILDKIT=1 docker build --secret id=ota_signing_key,src="$RUNNER_TEMP/ci_ota.key" -t transit-tracker:ci .
+        run: DOCKER_BUILDKIT=1 docker build --secret id=ota_signing_key,src="$RUNNER_TEMP/ci_ota.key" -t foliocast:ci .
 
       - name: Smoke test (signed release + identity present, non-root)
         run: |
           set -euo pipefail
-          docker run --rm --entrypoint sh transit-tracker:ci -c \
+          docker run --rm --entrypoint sh foliocast:ci -c \
             'test -s tracker-arm && test -s tracker-arm.manifest.json && test -s server_identity.cert.json && test -s server_identity.key && command -v setpriv'
-          docker run -d --name tt -p 18000:8000 transit-tracker:ci
+          docker run -d --name tt -p 18000:8000 foliocast:ci
           for i in $(seq 1 30); do curl -fsS http://localhost:18000/healthz && break; sleep 1; done
           curl -fsS -o /dev/null http://localhost:18000/tracker-arm.manifest
           docker top tt | grep 'server.py' | grep -vq '^root'

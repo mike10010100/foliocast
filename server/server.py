@@ -1207,7 +1207,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
             nonce = self.headers.get(NONCE_HEADER, "").strip()
             payload = json.dumps(
                 {
-                    "service": "transit-tracker",
+                    "service": "foliocast",
+                    "legacy_service": "transit-tracker",
                     "version": SERVER_VERSION,
                 }
             ).encode("utf-8")

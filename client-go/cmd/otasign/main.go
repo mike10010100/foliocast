@@ -23,7 +23,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/mike10010100/transit-tracker/client-go/internal/otasig"
+	"github.com/mike10010100/foliocast/client-go/internal/otasig"
 )
 
 // Exit codes.

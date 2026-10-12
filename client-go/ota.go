@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/mike10010100/transit-tracker/client-go/internal/otasig"
+	"github.com/mike10010100/foliocast/client-go/internal/otasig"
 )
 
 // ShouldUpdate evaluates whether an OTA update should be applied based on strict semver comparison.

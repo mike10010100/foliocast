@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-# Multi-architecture Dockerfile for Transit Tracker Server
+# Multi-architecture Dockerfile for FolioCast Server
 # Supports linux/amd64 (x86_64 PC/servers) and linux/arm64 (Raspberry Pi 3/4/5, Apple Silicon)
 
 # Stage 1: Compile + sign the static Kindle ARM client (tracker-arm)
@@ -51,7 +51,7 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 # Unprivileged runtime user. The container uses host networking, so the server
 # process should not hold root.
-RUN groupadd --system tracker && useradd --system --gid tracker --home-dir /app --no-create-home tracker
+RUN groupadd --system foliocast && useradd --system --gid foliocast --home-dir /app --no-create-home foliocast
 
 WORKDIR /app
 
@@ -71,8 +71,8 @@ COPY --from=builder /out/ ./
 # The identity key must be readable only by the runtime user. The cache dir is
 # a named volume; volumes created by older (root) images are re-owned at start.
 RUN mkdir -p /app/cache \
-    && chown -R tracker:tracker /app/cache \
-    && if [ -f server_identity.key ]; then chown tracker:tracker server_identity.key && chmod 0400 server_identity.key; fi
+    && chown -R foliocast:foliocast /app/cache \
+    && if [ -f server_identity.key ]; then chown foliocast:foliocast server_identity.key && chmod 0400 server_identity.key; fi
 
 # Expose HTTP port and Auto-Discovery UDP port
 EXPOSE 8000/tcp
@@ -85,4 +85,4 @@ ENV CACHE_DIR=/app/cache
 
 # Start as root only long enough to fix ownership of a pre-existing cache
 # volume, then drop to the unprivileged user for the server itself.
-CMD ["sh", "-c", "chown -R tracker:tracker /app/cache 2>/dev/null || true; exec setpriv --reuid=tracker --regid=tracker --init-groups python3 server.py"]
+CMD ["sh", "-c", "chown -R foliocast:foliocast /app/cache 2>/dev/null || true; exec setpriv --reuid=foliocast --regid=foliocast --init-groups python3 server.py"]

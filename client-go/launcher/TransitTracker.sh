@@ -18,7 +18,7 @@ MANIFEST_TMP="${BINARY}.manifest.$$"
 PORT="${SERVER_PORT:-${PORT:-8000}}"
 PROC_ROUTE="${PROC_NET_ROUTE:-/proc/net/route}"
 PROC_ARP="${PROC_NET_ARP:-/proc/net/arp}"
-MDNS_HOST="${MDNS_HOST:-transittracker.local}"
+MDNS_HOST="${MDNS_HOST:-foliocast.local}"
 
 # shellcheck disable=SC2317,SC2329
 cleanup() {
@@ -65,10 +65,10 @@ verify_server() {
     esac
     cand_url="${cand_url%/}"
 
-    # 1. Primary probe: /identity (strict transit-tracker service identifier)
+    # 1. Primary probe: /identity (strict foliocast / transit-tracker service identifier)
     res_id="$(curl -fs -m 1 "$cand_url/identity" 2>/dev/null || true)"
     if [ -n "$res_id" ]; then
-        if echo "$res_id" | grep -q '"service"[[:space:]]*:[[:space:]]*"transit-tracker"'; then
+        if echo "$res_id" | grep -Eq '"service"[[:space:]]*:[[:space:]]*"(foliocast|transit-tracker)"'; then
             return 0
         fi
     fi
@@ -76,9 +76,9 @@ verify_server() {
     # 2. Secondary probe: /healthz
     res_hz="$(curl -fs -m 1 "$cand_url/healthz" 2>/dev/null || true)"
     if [ -n "$res_hz" ]; then
-        # If an explicit service field is returned, it must be transit-tracker
+        # If an explicit service field is returned, it must be foliocast or transit-tracker
         if echo "$res_hz" | grep -q '"service"'; then
-            if echo "$res_hz" | grep -q '"service"[[:space:]]*:[[:space:]]*"transit-tracker"'; then
+            if echo "$res_hz" | grep -Eq '"service"[[:space:]]*:[[:space:]]*"(foliocast|transit-tracker)"'; then
                 return 0
             fi
             return 1
@@ -168,12 +168,15 @@ find_active_subnet_prefix() {
 }
 
 probe_tier1() {
-    [ -n "$MDNS_HOST" ] || return 1
-    target="http://${MDNS_HOST}:${PORT}"
-    if verify_server "$target"; then
-        echo "$target"
-        return 0
-    fi
+    hosts="${MDNS_HOST:-foliocast.local transittracker.local}"
+    for host in $hosts; do
+        [ -n "$host" ] || continue
+        target="http://${host}:${PORT}"
+        if verify_server "$target"; then
+            echo "$target"
+            return 0
+        fi
+    done
     return 1
 }
 

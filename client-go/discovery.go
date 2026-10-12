@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mike10010100/transit-tracker/client-go/internal/otasig"
+	"github.com/mike10010100/foliocast/client-go/internal/otasig"
 )
 
 var (
@@ -48,12 +48,15 @@ type ServerOffer struct {
 }
 
 // ParseDiscoveryOffer parses a raw UDP payload such as:
+// "FOLIOCAST_OFFER http://192.168.86.193:8000 1.41.0"
 // "TRANSIT_TRACKER_OFFER http://192.168.86.193:8000 1.4.0"
 // The legacy "BUS_TRACKER_OFFER" header is still accepted for compatibility
 // with older servers.
 func ParseDiscoveryOffer(raw string) (*ServerOffer, error) {
 	trimmed := strings.TrimSpace(raw)
-	if !strings.HasPrefix(trimmed, "TRANSIT_TRACKER_OFFER") && !strings.HasPrefix(trimmed, "BUS_TRACKER_OFFER") {
+	if !strings.HasPrefix(trimmed, "FOLIOCAST_OFFER") &&
+		!strings.HasPrefix(trimmed, "TRANSIT_TRACKER_OFFER") &&
+		!strings.HasPrefix(trimmed, "BUS_TRACKER_OFFER") {
 		return nil, fmt.Errorf("%w: %s", ErrInvalidOfferHeader, trimmed)
 	}
 
@@ -121,12 +124,17 @@ func DiscoverViaUDP(ctx context.Context, port int, timeout time.Duration) (strin
 	defer conn.Close()
 
 	destAddrs := GetBroadcastAddresses(port)
-	probeMsg := []byte("TRANSIT_TRACKER_DISCOVER\n")
+	probeMsgs := [][]byte{
+		[]byte("FOLIOCAST_DISCOVER\n"),
+		[]byte("TRANSIT_TRACKER_DISCOVER\n"),
+	}
 
 	for _, dest := range destAddrs {
 		udpDest, err := net.ResolveUDPAddr("udp4", dest)
 		if err == nil {
-			_, _ = conn.WriteTo(probeMsg, udpDest)
+			for _, msg := range probeMsgs {
+				_, _ = conn.WriteTo(msg, udpDest)
+			}
 		}
 	}
 

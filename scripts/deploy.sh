@@ -46,7 +46,7 @@ fi
 
 IMAGE_TAG="v${VERSION}"
 echo "======================================================================"
-echo "🚌 Deploying Transit Tracker (${IMAGE_TAG})"
+echo "📻 Deploying FolioCast (${IMAGE_TAG})"
 echo "======================================================================"
 
 # The Kindle binary is signed during the image build with the release key,
@@ -70,16 +70,16 @@ fi
 
 # Docker multi-stage compiles and signs tracker-arm automatically
 export IMAGE_TAG
-DOCKER_BUILDKIT=1 "${COMPOSE_CMD[@]}" build transit-tracker
+DOCKER_BUILDKIT=1 "${COMPOSE_CMD[@]}" build foliocast
 
-if docker image inspect "transit-tracker:${IMAGE_TAG}" >/dev/null 2>&1; then
-    docker tag "transit-tracker:${IMAGE_TAG}" "transit-tracker:latest" || true
+if docker image inspect "foliocast:${IMAGE_TAG}" >/dev/null 2>&1; then
+    docker tag "foliocast:${IMAGE_TAG}" "foliocast:latest" || true
 fi
 
-"${COMPOSE_CMD[@]}" up -d --force-recreate transit-tracker
+"${COMPOSE_CMD[@]}" up -d --force-recreate foliocast
 
-echo "⏳ Waiting for Transit Tracker to pass healthcheck..."
-CONTAINER_NAME="transit-tracker"
+echo "⏳ Waiting for FolioCast to pass healthcheck..."
+CONTAINER_NAME="foliocast"
 MAX_WAIT_SECS=60
 ELAPSED=0
 HEALTH_STATUS="unknown"
@@ -88,7 +88,7 @@ while (( ELAPSED < MAX_WAIT_SECS )); do
     HEALTH_STATUS=$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "${CONTAINER_NAME}" 2>/dev/null || echo "starting")
     if [[ "${HEALTH_STATUS}" == "healthy" ]]; then
         echo ""
-        echo "✅ Transit Tracker is healthy and serving dashboard (took ${ELAPSED}s)."
+        echo "✅ FolioCast is healthy and serving dashboard (took ${ELAPSED}s)."
         break
     fi
     if [[ "${HEALTH_STATUS}" == "exited" || "${HEALTH_STATUS}" == "dead" ]]; then
@@ -106,7 +106,7 @@ if [[ "${HEALTH_STATUS}" != "healthy" ]]; then
     FINAL_STATUS=$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "${CONTAINER_NAME}" 2>/dev/null || echo "unknown")
     if [[ "${FINAL_STATUS}" == "healthy" ]]; then
         echo ""
-        echo "✅ Transit Tracker is healthy and serving dashboard."
+        echo "✅ FolioCast is healthy and serving dashboard."
     else
         echo ""
         echo "❌ Error: Container '${CONTAINER_NAME}' did not report healthy within ${MAX_WAIT_SECS}s (status: ${HEALTH_STATUS})." >&2
@@ -116,5 +116,5 @@ if [[ "${HEALTH_STATUS}" != "healthy" ]]; then
 fi
 
 echo "----------------------------------------------------------------------"
-echo "✅ Deployed transit-tracker:${IMAGE_TAG} (and latest) successfully!"
+echo "✅ Deployed foliocast:${IMAGE_TAG} (and latest) successfully!"
 echo "======================================================================"
