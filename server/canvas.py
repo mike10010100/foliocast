@@ -229,6 +229,77 @@ STOPS: list[dict[str, Any]] = [
     },
 ]
 
+DEFAULT_STOPS = STOPS
+
+
+def get_canvas_stops(config: Optional[Any] = None) -> list[dict[str, Any]]:
+    """Returns active transit stops for dashboard rendering.
+
+    Evaluates user overrides, then dynamic TransitStopProvider resolution,
+    falling back cleanly to default Hoboken STOPS.
+    """
+    if config is None:
+        try:
+            from location import get_location_config
+
+            config = get_location_config()
+        except ImportError:
+            return [dict(s) for s in STOPS]
+
+    if config is None:
+        return [dict(s) for s in STOPS]
+
+    # 1. User overrides in config
+    stops_ov = getattr(config, "stops_override", None)
+    if stops_ov is not None and isinstance(stops_ov, (list, tuple)):
+        try:
+            from transit_provider import get_transit_provider
+
+            provider = get_transit_provider(
+                city=getattr(config, "city", "Hoboken"),
+                route=getattr(config, "route", "126"),
+            )
+            resolved = provider.resolve_stops(
+                latitude=config.latitude,
+                longitude=config.longitude,
+                route=getattr(config, "route", "126"),
+                overrides=list(stops_ov),
+                fallback_to_default=True,
+            )
+            if resolved:
+                return resolved
+        except Exception:
+            pass
+
+    # 2. Dynamic provider resolution
+    try:
+        from transit_provider import get_transit_provider
+
+        provider = get_transit_provider(
+            city=getattr(config, "city", "Hoboken"),
+            route=getattr(config, "route", "126"),
+        )
+        resolved = provider.resolve_stops(
+            latitude=config.latitude,
+            longitude=config.longitude,
+            route=getattr(config, "route", "126"),
+            fallback_to_default=True,
+        )
+        if resolved:
+            return resolved
+    except Exception:
+        pass
+
+    # 3. 100% Backward compatibility fallback
+    return [dict(s) for s in STOPS]
+
+
+def render_dashboard_sync(*args: Any, **kwargs: Any) -> Any:
+    """Synchronously renders dashboard image matching render_dashboard."""
+    from render_dashboard import render_dashboard
+
+    return render_dashboard(*args, **kwargs)
+
 
 def get_font(size: int, bold: bool = False) -> Any:
     """

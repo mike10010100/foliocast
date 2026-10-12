@@ -85,6 +85,7 @@ class WeatherSnapshot:
     forecast: tuple[DailyForecast, ...] = field(default_factory=tuple)
     status: str = "ok"  # "ok", "stale", "error"
     as_of: float = 0.0
+    location_name: str = "Hoboken, NJ"
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -99,6 +100,7 @@ class WeatherSnapshot:
             "precip_prob": self.precip_prob,
             "status": self.status,
             "as_of": self.as_of,
+            "location_name": self.location_name,
             "forecast": [
                 {
                     "date": f.date_str,
@@ -114,8 +116,21 @@ class WeatherSnapshot:
         }
 
 
-def get_mock_weather_data() -> WeatherSnapshot:
-    """Generates realistic Hoboken weather data for preview and testing."""
+def get_mock_weather_data(
+    location_name: Optional[str] = None,
+) -> WeatherSnapshot:
+    """Generates realistic weather data for preview and testing."""
+    if location_name is None:
+        try:
+            from location import get_location_config
+
+            cfg = get_location_config()
+            location_name = (
+                getattr(cfg, "location_name", "Hoboken, NJ") if cfg else "Hoboken, NJ"
+            )
+        except Exception:
+            location_name = "Hoboken, NJ"
+
     now = datetime.now()
     day_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
     today_w = now.weekday()
@@ -172,34 +187,138 @@ def get_mock_weather_data() -> WeatherSnapshot:
         forecast=tuple(forecasts),
         status="ok",
         as_of=time.time(),
+        location_name=str(location_name or "Hoboken, NJ"),
     )
 
 
 class WeatherTracker:
     """
     Fetches and caches weather telemetry from Open-Meteo.
-    Thread-safe with TTL caching and graceful degradation.
+    Thread-safe with TTL caching, dynamic coordinate updates, and graceful degradation.
     """
 
     def __init__(
         self,
-        latitude: float = DEFAULT_LATITUDE,
-        longitude: float = DEFAULT_LONGITUDE,
+        latitude: Optional[float] = None,
+        longitude: Optional[float] = None,
+        location_name: Optional[str] = None,
         cache_ttl: int = DEFAULT_CACHE_TTL,
         timeout: float = 5.0,
+        location_store: Optional[Any] = None,
     ) -> None:
-        self.latitude = latitude
-        self.longitude = longitude
         self.cache_ttl = cache_ttl
         self.timeout = timeout
+        self._lock = threading.Lock()
         self._cache: Optional[WeatherSnapshot] = None
         self._cache_time: float = 0.0
-        self._lock = threading.Lock()
+        self._location_store = location_store
+        self._explicit_coords = latitude is not None and longitude is not None
+
+        if self._explicit_coords:
+            self.latitude = float(latitude)  # type: ignore[arg-type]
+            self.longitude = float(longitude)  # type: ignore[arg-type]
+            self.location_name = str(location_name or "Custom Location")
+        else:
+            cfg = self._get_active_location_config()
+            self.latitude = float(cfg.latitude) if cfg else DEFAULT_LATITUDE
+            self.longitude = float(cfg.longitude) if cfg else DEFAULT_LONGITUDE
+            self.location_name = str(
+                getattr(cfg, "location_name", getattr(cfg, "name", "Hoboken, NJ"))
+                if cfg
+                else "Hoboken, NJ"
+            )
+
+    def _get_active_location_config(self) -> Any:
+        if self._location_store is not None:
+            return self._location_store.get()
+        try:
+            from location import get_location_config
+
+            return get_location_config()
+        except ImportError:
+            return None
+
+    def set_location(
+        self,
+        lat: float,
+        lon: float,
+        location_name: Optional[str] = None,
+    ) -> None:
+        """Thread-safe update of weather coordinates; invalidates cache if changed."""
+        with self._lock:
+            coord_changed = (
+                abs(self.latitude - float(lat)) > 1e-4
+                or abs(self.longitude - float(lon)) > 1e-4
+            )
+            name_changed = (
+                location_name is not None and self.location_name != location_name
+            )
+            self.latitude = float(lat)
+            self.longitude = float(lon)
+            if location_name is not None:
+                self.location_name = str(location_name)
+            if coord_changed or name_changed:
+                self._cache = None
+                self._cache_time = 0.0
+                logger.info(
+                    "WeatherTracker coordinates updated to (%.4f, %.4f, %s); cache invalidated",
+                    self.latitude,
+                    self.longitude,
+                    self.location_name,
+                )
+
+    def update_location(
+        self,
+        latitude: float,
+        longitude: float,
+        location_name: Optional[str] = None,
+    ) -> None:
+        """Alias for set_location for contract compatibility."""
+        self.set_location(lat=latitude, lon=longitude, location_name=location_name)
+
+    def update_from_config(self, cfg: Any) -> None:
+        """Thread-safe update using a LocationConfig instance."""
+        if cfg is not None:
+            self.set_location(
+                lat=cfg.latitude,
+                lon=cfg.longitude,
+                location_name=getattr(cfg, "location_name", getattr(cfg, "name", None)),
+            )
+
+    def invalidate_cache(self) -> None:
+        """Thread-safe cache invalidation forcing next get_weather() to fetch fresh."""
+        with self._lock:
+            self._cache = None
+            self._cache_time = 0.0
 
     def get_weather(self, force_refresh: bool = False) -> WeatherSnapshot:
-        """Fetches the latest weather snapshot, using cache if unexpired."""
+        """Fetches latest weather snapshot, dynamically refreshing coordinates if needed."""
         now = time.time()
         with self._lock:
+            # Sync with LocationConfigStore if coordinates are dynamic
+            if not self._explicit_coords:
+                cfg = self._get_active_location_config()
+                if cfg is not None:
+                    cfg_lat = float(cfg.latitude)
+                    cfg_lon = float(cfg.longitude)
+                    cfg_name = str(
+                        getattr(
+                            cfg,
+                            "location_name",
+                            getattr(cfg, "name", self.location_name),
+                        )
+                    )
+                    if (
+                        abs(self.latitude - cfg_lat) > 1e-4
+                        or abs(self.longitude - cfg_lon) > 1e-4
+                        or self.location_name != cfg_name
+                    ):
+                        self.latitude = cfg_lat
+                        self.longitude = cfg_lon
+                        self.location_name = cfg_name
+                        self._cache = None
+                        self._cache_time = 0.0
+
             if (
                 not force_refresh
                 and self._cache is not None
@@ -207,6 +326,7 @@ class WeatherTracker:
             ):
                 return self._cache
 
+        # Fetch outside lock to prevent blocking concurrent readers during network I/O
         try:
             snapshot = self._fetch_live()
             with self._lock:
@@ -231,9 +351,10 @@ class WeatherTracker:
                         forecast=self._cache.forecast,
                         status="stale",
                         as_of=self._cache.as_of,
+                        location_name=self.location_name,
                     )
             # No cache at all: return mock fallback marked error
-            mock = get_mock_weather_data()
+            mock = get_mock_weather_data(location_name=self.location_name)
             return WeatherSnapshot(
                 temp=mock.temp,
                 apparent_temp=mock.apparent_temp,
@@ -247,6 +368,7 @@ class WeatherTracker:
                 forecast=mock.forecast,
                 status="error",
                 as_of=now,
+                location_name=self.location_name,
             )
 
     def _fetch_live(self) -> WeatherSnapshot:
@@ -333,4 +455,12 @@ class WeatherTracker:
             forecast=tuple(forecast_list),
             status="ok",
             as_of=time.time(),
+            location_name=self.location_name,
         )
+
+
+# Alias for architectural contract compliance (Requirement R4)
+WeatherProvider = WeatherTracker
+
+# Module singleton
+WEATHER_TRACKER = WeatherTracker()

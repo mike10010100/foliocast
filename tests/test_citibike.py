@@ -279,6 +279,60 @@ class TestCitiBikeTracker(unittest.TestCase):
         self.assertEqual(status["ebikes"], 3)
         self.assertEqual(status["total_bikes"], 8)
 
+    def test_stations_empty_list_preserved(self):
+        tracker = CitiBikeTracker(stations=[])
+        self.assertEqual(tracker.stations, [])
+        self.assertEqual(len(tracker.stations), 0)
+
+    def test_stations_none_defaults_to_default_stations(self):
+        tracker = CitiBikeTracker(stations=None)
+        self.assertEqual(tracker.stations, DEFAULT_STATIONS)
+        self.assertIsNot(tracker.stations, DEFAULT_STATIONS)
+
+    def test_set_stations_thread_safe_update(self):
+        tracker = CitiBikeTracker()
+        self.assertEqual(len(tracker.stations), 6)
+        tracker.set_stations([])
+        self.assertEqual(tracker.stations, [])
+        tracker.set_stations(None)
+        self.assertEqual(tracker.stations, DEFAULT_STATIONS)
+
+    def test_fetch_live_skips_network_when_empty(self):
+        tracker = CitiBikeTracker(stations=[])
+        with patch("urllib.request.urlopen") as mock_url:
+            res = tracker._fetch_live()
+            self.assertEqual(res, [])
+            mock_url.assert_not_called()
+
+    def test_snapshot_when_stations_empty(self):
+        from citibike import CB_STATUS_OK
+
+        tracker = CitiBikeTracker(stations=[])
+        snap = tracker.get_snapshot()
+        self.assertEqual(snap.status, CB_STATUS_OK)
+        self.assertEqual(snap.stations, [])
+        self.assertIsNotNone(snap.as_of)
+
+    def test_get_station_status_when_stations_empty(self):
+        tracker = CitiBikeTracker(stations=[])
+        res = tracker.get_station_status()
+        self.assertEqual(res, [])
+
+    def test_get_mock_data_when_stations_empty(self):
+        tracker = CitiBikeTracker(stations=[])
+        self.assertEqual(tracker.get_mock_data(), [])
+
+    def test_get_mock_data_with_custom_stations(self):
+        custom = [
+            {"id": "cust-1", "name": "Custom 1", "walk_min": 4},
+            {"id": "cust-2", "name": "Custom 2", "walk_min": 7},
+        ]
+        tracker = CitiBikeTracker(stations=custom)
+        mock = tracker.get_mock_data()
+        self.assertEqual(len(mock), 2)
+        ids = {s["id"] for s in mock}
+        self.assertEqual(ids, {"cust-1", "cust-2"})
+
 
 if __name__ == "__main__":
     unittest.main()

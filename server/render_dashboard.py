@@ -5,6 +5,7 @@ from typing import Any, Optional
 
 from bus_tracker import NJTransitBusTracker, normalize_arrival
 from canvas import (
+    DEFAULT_STOPS,
     HEIGHT,
     STATUS_EMPTY,
     STATUS_ERROR,
@@ -20,6 +21,7 @@ from canvas import (
     draw_status_strip,
     ellipsize_to_width,
     empty_state_message,
+    get_canvas_stops,
     get_font,
     mock_badge_width,
     parse_minutes,
@@ -33,6 +35,7 @@ from PIL import Image, ImageDraw, ImageFont
 from weather import WeatherTracker, get_mock_weather_data
 
 __all__ = [
+    "DEFAULT_STOPS",
     "HEIGHT",
     "ImageFont",
     "STATUS_EMPTY",
@@ -41,7 +44,6 @@ __all__ = [
     "STOPS",
     "WIDTH",
     "ScaledDraw",
-    "os",
     "draw_battery_indicator",
     "draw_bottom_button_bar",
     "draw_brightness_button",
@@ -50,11 +52,14 @@ __all__ = [
     "draw_status_strip",
     "ellipsize_to_width",
     "empty_state_message",
+    "get_canvas_stops",
     "get_font",
     "get_mock_data",
     "mock_badge_width",
+    "os",
     "parse_minutes",
     "render_dashboard",
+    "render_dashboard_sync",
     "resolve_view",
 ]
 
@@ -104,20 +109,74 @@ def render_dashboard(
     available_views: Optional[list[str]] = None,
     weather_data: Any = None,
     custom_data: Optional[dict[str, Any]] = None,
+    stops: Optional[list[dict[str, Any]]] = None,
+    location_config: Optional[Any] = None,
 ) -> str:
     """
     Renders a high-contrast black-and-white image optimized for e-ink
     or low-power dashboard screens (default 800x480, or 800x600 for 4:3 displays).
     Supports built-in views and arbitrary modular dashboards.
     """
-    if citibike_data is None:
+    if location_config is None:
         try:
-            tracker = CitiBikeTracker()
-            citibike_data = (
-                tracker.get_mock_data() if is_mock else tracker.get_station_status()
-            )
-        except Exception:
+            from location import get_location_config
+
+            location_config = get_location_config()
+        except ImportError:
+            location_config = None
+
+    active_stops = stops if stops is not None else get_canvas_stops(location_config)
+
+    if citibike_data is None:
+        enable_micro = (
+            getattr(location_config, "enable_micromobility", True)
+            if location_config
+            else True
+        )
+        if not enable_micro:
             citibike_data = []
+        else:
+            try:
+                from citibike_discovery import discover_citibike_stations
+
+                lat = location_config.latitude if location_config else 40.7371
+                lon = location_config.longitude if location_config else -74.0305
+                max_st = (
+                    getattr(location_config, "citibike_max_stations", 6)
+                    if location_config
+                    else 6
+                )
+                max_walk = (
+                    getattr(location_config, "max_walk_minutes", 15)
+                    if location_config
+                    else 15
+                )
+                discovered = discover_citibike_stations(
+                    latitude=lat,
+                    longitude=lon,
+                    max_stations=max_st,
+                    max_walk_minutes=max_walk,
+                    enable_micromobility=True,
+                )
+                if not discovered:
+                    citibike_data = []
+                else:
+                    tracker = CitiBikeTracker(stations=discovered)
+                    citibike_data = (
+                        tracker.get_mock_data()
+                        if is_mock
+                        else tracker.get_station_status()
+                    )
+            except Exception:
+                try:
+                    tracker = CitiBikeTracker()
+                    citibike_data = (
+                        tracker.get_mock_data()
+                        if is_mock
+                        else tracker.get_station_status()
+                    )
+                except Exception:
+                    citibike_data = []
 
     active_view = resolve_view(view)
 
@@ -140,6 +199,8 @@ def render_dashboard(
             stop_status=stop_status,
             width=width,
             height=height,
+            stops=active_stops,
+            location_config=location_config,
         )
     elif active_view == "evening":
         render_evening_view(
@@ -153,15 +214,26 @@ def render_dashboard(
             stop_status=stop_status,
             width=width,
             height=height,
+            stops=active_stops,
+            location_config=location_config,
         )
     else:
         # Modular dashboard rendering via REGISTRY
         if weather_data is None:
             try:
+                loc_name = (
+                    getattr(location_config, "location_name", "Hoboken, NJ")
+                    if location_config
+                    else "Hoboken, NJ"
+                )
+                lat = location_config.latitude if location_config else None
+                lon = location_config.longitude if location_config else None
                 weather_data = (
-                    get_mock_weather_data()
+                    get_mock_weather_data(location_name=loc_name)
                     if is_mock
-                    else WeatherTracker().get_weather()
+                    else WeatherTracker(
+                        latitude=lat, longitude=lon, location_name=loc_name
+                    ).get_weather()
                 )
             except Exception:
                 weather_data = get_mock_weather_data() if is_mock else None
@@ -196,6 +268,8 @@ def render_dashboard(
                 stop_status=stop_status,
                 width=width,
                 height=height,
+                stops=active_stops,
+                location_config=location_config,
             )
 
     # Not interactive (idle-while-suspended or overnight): erase the button bar
@@ -210,9 +284,15 @@ def render_dashboard(
     return output_path
 
 
-def get_mock_data():
+# Alias for synchronous rendering contract
+render_dashboard_sync = render_dashboard
+
+
+def get_mock_data(
+    stops: Optional[list[dict[str, Any]]] = None,
+) -> dict[str, list[dict[str, Any]]]:
     """Generates realistic peak-hour commute data for layout previewing."""
-    return {
+    base: dict[str, list[dict[str, Any]]] = {
         "20512": [
             {
                 "route": "126",
@@ -246,6 +326,36 @@ def get_mock_data():
             },
         ],
     }
+    if stops is None:
+        return base
+
+    result: dict[str, list[dict[str, Any]]] = {}
+    for i, s in enumerate(stops):
+        sid = str(s.get("id", ""))
+        if sid in base:
+            result[sid] = [dict(item) for item in base[sid]]
+        else:
+            route = str(s.get("route") or "126")
+            dest = str(s.get("destination") or f"{route} NEW YORK")
+            eta1 = f"in {4 + i * 7} mins"
+            eta2 = f"in {16 + i * 8} mins"
+            result[sid] = [
+                {
+                    "route": route,
+                    "destination": dest,
+                    "eta": eta1,
+                    "occupancy": "SEATS_AVAILABLE",
+                    "vehicle_id": str(25200 + i),
+                },
+                {
+                    "route": route,
+                    "destination": dest,
+                    "eta": eta2,
+                    "occupancy": "HALF_EMPTY",
+                    "vehicle_id": str(21000 + i),
+                },
+            ]
+    return result
 
 
 if __name__ == "__main__":
@@ -273,7 +383,7 @@ if __name__ == "__main__":
         for stop in STOPS:
             sid = stop["id"]
             status, trips = tracker.get_arrivals_with_status(stop_id=sid, route="126")
-            stops_data[sid] = [normalize_arrival(t) for t in trips]
+            stops_data[sid] = [dict(normalize_arrival(t)) for t in trips]
             stop_status[sid] = status
 
     render_dashboard(

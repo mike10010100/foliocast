@@ -35,6 +35,12 @@ Welcome to the **Hoboken Transit Tracker** technical documentation. This documen
 3. For file-based configuration, copy `config/schedule.example.json` to `config/schedule.json` and edit it directly (changes hot-reload automatically).
 4. Detailed state machine behavior is documented in **[Schedule State Machine](architecture.md#23-schedule-state-machine-serverstate_machinepy-serverschedulepy)**.
 
+### 📍 "I want to customize my home location, bus stops, or Citi Bike stations."
+1. Copy `config/location.example.json` to `config/location.json` and set your coordinates, address, and transit preferences.
+2. The server automatically discovers the nearest Citi Bike stations and pairs the closest inbound Washington St and Clinton St Route 126 stops.
+3. For runtime updates, call `GET /api/location` or `POST /api/location` (documented in **[HTTP API Reference](api.md#5-location-configuration--auto-discovery-api)**).
+4. See **[Architecture Documentation](architecture.md#26-location-configuration--multi-modal-transit-auto-discovery-serverlocationpy-servercitibike_discoverypy-servertransit_providerpy)** for the provider design and pedestrian geometry model.
+
 ### 🔐 "I want to inspect or audit the security model."
 1. Read the **[Cryptographic Trust Chain](security.md#1-cryptographic-trust-chain)** to understand how Ed25519 keys authenticate OTA updates and server responses.
 2. Review the **[Constant-Time Cryptography Defenses](security.md#4-constant-time-timing-attack-defenses)** to verify timing side-channel mitigations.
@@ -50,6 +56,8 @@ Welcome to the **Hoboken Transit Tracker** technical documentation. This documen
 ## 💡 Key Concepts & Terminology
 
 - **Dual-Redundancy Arrival Engine**: The server queries NJ Transit's DepartureVision (BUSDV2) XML feed first; if it is slow or down, it automatically queries the public GraphQL API or static GTFS schedules without interrupting the display.
+- **Multi-Corridor Transit Auto-Discovery**: Dynamically evaluates user coordinates to select the closest transit stops across multiple commuter corridors (e.g. Washington St and Clinton St in Hoboken) with calculated pedestrian walking times and 1.25× urban circuity.
+- **Adaptive Layout Engine**: If coordinates fall outside Citi Bike micro-mobility coverage or if micro-mobility is disabled, the layout dynamically balances columns and expands bus departure cards to full height without leaving blank grids or dead space.
 - **Hero Presentation Views**:
   - `morning` (5:00 AM – 12:00 PM): Hero presentation highlighting Citi Bike dock availability and e-bikes for commuters heading into Manhattan.
   - `evening` (12:00 PM – 5:00 AM): Hero presentation highlighting Route 126 NYC-bound and return bus departures.

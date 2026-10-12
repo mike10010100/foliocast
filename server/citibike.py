@@ -132,14 +132,26 @@ class CitiBikeTracker:
     def __init__(
         self, stations: Optional[list[StationConfig]] = None, cache_ttl: int = 30
     ):
-        self.stations = stations or DEFAULT_STATIONS
+        self.stations = list(DEFAULT_STATIONS) if stations is None else list(stations)
         self.cache_ttl = cache_ttl
         self._last_fetch_time = 0.0
         self._cached_data: list[StationStatus] = []
         self._lock = threading.Lock()
 
+    def set_stations(self, stations: Optional[list[StationConfig]]) -> None:
+        """Updates target stations thread-safely and invalidates in-memory cache."""
+        with self._lock:
+            self.stations = (
+                list(DEFAULT_STATIONS) if stations is None else list(stations)
+            )
+            self._cached_data = []
+            self._last_fetch_time = 0.0
+
     def _fetch_live(self) -> list[StationStatus]:
         """Fetches the GBFS feed and maps it onto the configured stations."""
+        if not self.stations:
+            return []
+
         req = urllib.request.Request(
             GBFS_STATUS_URL,
             headers={
@@ -195,6 +207,8 @@ class CitiBikeTracker:
         """
         with self._lock:
             now = time.time()
+            if not self.stations:
+                return CitiBikeSnapshot(CB_STATUS_OK, [], now)
             if (
                 not force_refresh
                 and self._cached_data
@@ -234,84 +248,35 @@ class CitiBikeTracker:
 
     def get_mock_data(self) -> list[StationStatus]:
         """Mock preview data (?mock=1 only) with realistic commute availability across all tracked stations."""
-        mock = [
-            {
-                "id": "fadf00cf-d84a-49e8-9607-c67154915412",
-                "name": "Clinton & 9th",
-                "full_name": "Columbus Park - Clinton St & 9 St",
-                "walk_min": 3,
-                "distance_m": 246,
-                "ebikes": 5,
-                "classic": 12,
-                "total_bikes": 17,
-                "docks": 9,
-                "is_offline": False,
-                "is_returning": True,
-            },
-            {
-                "id": "f417d8da-0f15-49b0-9e3c-3c3e55c2691d",
-                "name": "Washington & 11th",
-                "full_name": "11 St & Washington St",
-                "walk_min": 6,
-                "distance_m": 442,
-                "ebikes": 2,
-                "classic": 16,
-                "total_bikes": 18,
-                "docks": 6,
-                "is_offline": False,
-                "is_returning": True,
-            },
-            {
-                "id": "655b0878-c22b-4f8c-8675-21bf30d1eebf",
-                "name": "Willow & 12th",
-                "full_name": "Willow Ave & 12 St",
-                "walk_min": 6,
-                "distance_m": 460,
-                "ebikes": 4,
-                "classic": 3,
-                "total_bikes": 7,
-                "docks": 8,
-                "is_offline": False,
-                "is_returning": True,
-            },
-            {
-                "id": "519824e4-69ba-4270-a395-17c204f328f8",
-                "name": "Washington & 8th",
-                "full_name": "8 St & Washington St",
-                "walk_min": 6,
-                "distance_m": 462,
-                "ebikes": 0,
-                "classic": 14,
-                "total_bikes": 14,
-                "docks": 7,
-                "is_offline": False,
-                "is_returning": True,
-            },
-            {
-                "id": "21c4a77d-b1ae-4262-b143-087fd14a07b8",
-                "name": "Clinton & 7th",
-                "full_name": "Clinton St & 7 St",
-                "walk_min": 7,
-                "distance_m": 556,
-                "ebikes": 3,
-                "classic": 5,
-                "total_bikes": 8,
-                "docks": 10,
-                "is_offline": False,
-                "is_returning": True,
-            },
-            {
-                "id": "9d344652-976b-4c2d-bede-2ef19b0fbf13",
-                "name": "Grand & 6th",
-                "full_name": "6 St & Grand St",
-                "walk_min": 10,
-                "distance_m": 754,
-                "ebikes": 1,
-                "classic": 4,
-                "total_bikes": 5,
-                "docks": 13,
-                "is_offline": False,
-                "is_returning": True,
-            },
-        ]
-        return sort_stations_by_ebike_priority(mock)
+        if not self.stations:
+            return []
+
+        mock_by_id = {
+            "fadf00cf-d84a-49e8-9607-c67154915412": (5, 12, 9),
+            "f417d8da-0f15-49b0-9e3c-3c3e55c2691d": (2, 16, 6),
+            "655b0878-c22b-4f8c-8675-21bf30d1eebf": (4, 3, 8),
+            "519824e4-69ba-4270-a395-17c204f328f8": (0, 14, 7),
+            "21c4a77d-b1ae-4262-b143-087fd14a07b8": (3, 5, 10),
+            "9d344652-976b-4c2d-bede-2ef19b0fbf13": (1, 4, 13),
+        }
+        results: list[StationStatus] = []
+        for i, s in enumerate(self.stations):
+            ebikes, classic, docks = mock_by_id.get(
+                s["id"], (2 + (i % 4), 5 + (i % 6), 8 + (i % 5))
+            )
+            results.append(
+                {
+                    "id": s["id"],
+                    "name": s["name"],
+                    "full_name": s.get("full_name", s["name"]),
+                    "walk_min": s.get("walk_min", 5),
+                    "distance_m": s.get("distance_m", 0),
+                    "ebikes": ebikes,
+                    "classic": classic,
+                    "total_bikes": ebikes + classic,
+                    "docks": docks,
+                    "is_offline": False,
+                    "is_returning": True,
+                }
+            )
+        return sort_stations_by_ebike_priority(results)

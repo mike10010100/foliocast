@@ -131,6 +131,57 @@ The schedule is fully customizable via `config/schedule.json` or directly in the
 
 ---
 
+## 📍 Location Auto-Discovery & Customization
+
+The dashboard automatically selects the ideal transit options for your location:
+- **Dual-Corridor Bus Selection**: Automatically pairs the closest inbound **Washington Street** stop with the closest inbound **Clinton Street** stop along NJ Transit Route 126, calculating exact pedestrian walking times.
+- **Citi Bike Auto-Discovery**: Queries live GBFS feeds (with 24-hour disk caching and an offline seed database) to find the nearest docks and clean their intersection names.
+- **Adaptive Display**: If you live outside Citi Bike coverage or disable micro-mobility, the layout dynamically expands bus departure cards to fill the display without empty boxes.
+
+### Configuring Your Location
+
+By default, the server runs with Hoboken City Hall, Hoboken, NJ (`40.7371, -74.0305`). You can customize your location in three ways:
+
+#### 1. Configuration File (`config/location.json`)
+Copy the provided template and customize your coordinates:
+```bash
+cp config/location.example.json config/location.json
+```
+```json
+{
+  "version": 1,
+  "latitude": 40.7371,
+  "longitude": -74.0305,
+  "location_name": "Downtown Hoboken",
+  "address": "100 Washington St",
+  "city": "Hoboken",
+  "state": "NJ",
+  "route": "126",
+  "enable_micromobility": true,
+  "max_walk_minutes": 15,
+  "citibike_max_stations": 6
+}
+```
+*Changes to `config/location.json` hot-reload automatically without restarting the server.*
+
+#### 2. Environment Variables
+Configure coordinates directly in your `.env` file or container environment:
+```bash
+TRACKER_LATITUDE=40.7371
+TRACKER_LONGITUDE=-74.0305
+TRACKER_LOCATION_NAME="Downtown Hoboken"
+TRACKER_ENABLE_MICROMOBILITY=true
+TRACKER_MAX_WALK_MINUTES=15
+```
+
+#### 3. Live REST API
+Inspect or update location and resolved transit stops dynamically via the HTTP API:
+- **Inspect**: `curl http://localhost:8000/api/location`
+- **Update**: `curl -X POST -H "X-Tracker-Token: $TOKEN" -H "Content-Type: application/json" -d '{"config": {"latitude": 40.7371, "longitude": -74.0305}}' http://localhost:8000/api/location`
+- See the **[HTTP API Reference](docs/api.md#5-location-configuration--auto-discovery-api)** for full schema details.
+
+---
+
 ## 🏗️ Architecture Overview
 
 ```mermaid

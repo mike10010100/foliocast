@@ -27,3 +27,6 @@ mutants/
 
 # Local schedule state machine config (see config/schedule.example.json).
 config/schedule.json
+
+# Local location configuration (see config/location.example.json).
+config/location.json

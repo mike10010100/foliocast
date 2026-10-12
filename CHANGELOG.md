@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.40.0] - 2026-10-11
+
+### Added
+
+- **Location Configuration & Store Architecture** (`server/location.py`, `server/paths.py`, `config/location.example.json`):
+  - Added `LocationConfig` dataclass supporting user-configured coordinates, location names, addresses, routes, destinations, and walking distance thresholds.
+  - Built thread-safe `LocationConfigStore` supporting stat-based hot reload, atomic temporary-file replacement, and multi-tier configuration precedence (hardcoded defaults -> `config/location.json` / `$LOCATION_CONFIG` -> `TRACKER_*` environment variables).
+  - Maintained 100% backward compatibility by defaulting to Hoboken City Hall, Hoboken, NJ (`40.7371, -74.0305`) with Route 126 and Hoboken Citi Bike stations when no config is provided.
+  - Committed documented configuration template in `config/location.example.json`.
+
+- **Live Location & Transit Management REST API** (`server/server.py`):
+  - Added `GET /api/location` open endpoint providing real-time telemetry inspection of active location parameters, dynamically resolved bus stops, and nearest Citi Bike docks.
+  - Added `POST /api/location` control endpoint authenticated via `X-Tracker-Token` (validated using `TRACKER_CONTROL_TOKEN`) for live runtime configuration updates, supporting JSON and form payloads with automatic data cache invalidation and atomic persistence.
+
+- **Citi Bike GBFS Station Auto-Discovery Engine** (`server/citibike_discovery.py`, `server/data/citibike_stations_seed.json`):
+  - Integrated live GBFS `station_information.json` resolver with 24-hour disk caching (`cache/citibike_stations.json`) and graceful fallback.
+  - Bundled an offline seed cache (`server/data/citibike_stations_seed.json`) with 2,500+ NYC/NJ stations to guarantee deterministic CI execution and fast container initialization.
+  - Implemented pedestrian geometry engine computing Haversine great-circle distance with a 1.25 urban circuity factor and 80 m/min walking speed.
+  - Implemented station name normalizer converting raw cross-street titles into clean, legible intersection labels.
+  - Implemented graceful out-of-coverage handling returning `[]` when coordinates are beyond micro-mobility coverage.
+
+- **Extensible Multi-Modal Transit Stop Provider Interface** (`server/transit_provider.py`, `server/transit_catalog.py`):
+  - Architected abstract `TransitStopProvider` interface supporting dynamic registry, decorator-based provider registration, and multi-agency transit extension (Hoboken, Jersey City, NYC MTA).
+  - Implemented `Hoboken126Provider` with curated Route 126 catalog for Washington St and Clinton St corridors.
+  - Implemented dual-corridor inbound pairing algorithm pairing the closest Washington St stop with the closest Clinton St stop with calculated walking minutes.
+  - Added support for explicit custom stop overrides (`stops_override`) bypassing proximity calculations.
+
+- **Dynamic Dashboard Layout Adaptation & Weather Wiring** (`server/weather.py`, `server/morning_view.py`, `server/evening_view.py`, `server/render_dashboard.py`):
+  - Connected `WeatherTracker` coordinates and location naming directly to active `LocationConfig`.
+  - Added dynamic header badges, route titles, and subheadings across morning and evening dashboard views.
+  - Adapted `morning_view.py` layout to automatically expand bus departures into high-visibility hero cards when Citi Bike is absent or micro-mobility is disabled, eliminating empty grids.
+
+- **End-to-End Real-Testing Verification Pipeline** (`.agents/skills/real-testing/`):
+  - Integrated `real-testing` behavioral verification methodology exercising live daemon HTTP endpoints (`/api/location`, `/dashboard.png`), varied input matrices, failure injection, and independent system invariants.
+
+### Fixed
+
+- **Citi Bike Empty Station List Fallback Bug** (`server/citibike.py`):
+  - Fixed falsy evaluation bug where empty station list `[]` incorrectly triggered `stations or DEFAULT_STATIONS`, ensuring out-of-coverage or disabled micro-mobility cleanly returns zero stations.
+
+- **Location Config Atomic Write Race Condition** (`server/location.py`):
+  - Enforced POSIX atomic rename semantics and mutex locking during configuration persistence to prevent partial writes during concurrent requests.
+
+---
+
 ## [1.39.5] - 2026-10-11
 
 ### Changed

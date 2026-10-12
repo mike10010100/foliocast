@@ -223,11 +223,106 @@ Mutates schedule state machine configuration or sets runtime overrides.
 
 ---
 
-## 5. Control Plane & Fleet Administration
+## 5. Location Configuration & Auto-Discovery API
+
+### 5.1 `GET /api/location`
+Retrieves the active location configuration, current coordinates, and the automatically resolved transit stops and Citi Bike stations.
+
+#### Response (`200 OK`, `application/json`)
+```json
+{
+  "status": "ok",
+  "location": {
+    "version": 1,
+    "latitude": 40.7371,
+    "longitude": -74.0305,
+    "location_name": "Hoboken City Hall",
+    "address": "Hoboken City Hall",
+    "city": "Hoboken",
+    "state": "NJ",
+    "route": "126",
+    "destination": "NYC PORT AUTHORITY",
+    "enable_micromobility": true,
+    "max_walk_minutes": 15,
+    "citibike_max_stations": 6,
+    "stops_override": null
+  },
+  "resolved_bus_stops": [
+    {
+      "id": "20512",
+      "name": "Washington & 9th",
+      "subtitle": "Stop #20512 • via Lincoln Tunnel",
+      "walk_min": 5,
+      "distance_m": 435,
+      "line": "126",
+      "direction": "TO NYC"
+    },
+    {
+      "id": "20494",
+      "name": "Clinton & 9th",
+      "subtitle": "Stop #20494 • via Clinton Ave",
+      "walk_min": 3,
+      "distance_m": 246,
+      "line": "126",
+      "direction": "TO NYC"
+    }
+  ],
+  "resolved_citibike_stations": [
+    {
+      "id": "fadf00cf-d84a-49e8-9607-c67154915412",
+      "name": "Clinton & 9th",
+      "full_name": "Columbus Park - Clinton St & 9 St",
+      "walk_min": 3,
+      "distance_m": 184
+    }
+  ]
+}
+```
+
+---
+
+### 5.2 `POST /api/location`
+Updates or resets the location configuration at runtime. Requires authentication via the `X-Tracker-Token` header.
+
+#### Actions & Payloads
+
+- **Update Location Configuration**:
+  ```bash
+  curl -X POST -H "X-Tracker-Token: $TRACKER_CONTROL_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "config": {
+        "latitude": 40.7371,
+        "longitude": -74.0305,
+        "location_name": "Downtown Hoboken",
+        "address": "100 Washington St",
+        "city": "Hoboken",
+        "state": "NJ",
+        "route": "126",
+        "enable_micromobility": true,
+        "max_walk_minutes": 12,
+        "citibike_max_stations": 6
+      }
+    }' \
+    http://localhost:8000/api/location
+  ```
+  *(Atomically persists to `config/location.json`, flushes transit & weather caches, re-resolves stops and stations, and returns updated resolved options.)*
+
+- **Reset to Default Hoboken Configuration**:
+  ```bash
+  curl -X POST -H "X-Tracker-Token: $TRACKER_CONTROL_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d '{"action": "reset"}' \
+    http://localhost:8000/api/location
+  ```
+
+---
+
+## 6. Control Plane & Fleet Administration
 
 All endpoints below require authentication with the `X-Tracker-Token` header.
 
-### 5.1 `GET /devices`
+### 6.1 `GET /devices`
 Lists all registered devices and real-time telemetry.
 
 #### Response (`200 OK`, `application/json`)
@@ -250,7 +345,7 @@ Lists all registered devices and real-time telemetry.
 }
 ```
 
-### 5.2 `POST /action`
+### 6.2 `POST /action`
 Queues a hardware or software action for a specific client or the entire fleet.
 
 #### Parameters (JSON body, Form, or Query)
@@ -276,7 +371,7 @@ curl -X POST -H "X-Tracker-Token: $TRACKER_CONTROL_TOKEN" \
   http://localhost:8000/action
 ```
 
-### 5.3 `POST /mode`
+### 6.3 `POST /mode`
 Configures the execution mode for devices.
 
 #### Parameters
@@ -287,21 +382,21 @@ Configures the execution mode for devices.
   - `oneshot`: Render once and exit.
 - `client_id` (optional): Target client ID or `all`.
 
-### 5.4 `POST /diag/request`
+### 6.4 `POST /diag/request`
 Requests that devices upload a diagnostic dump on their next poll.
 
 #### Parameters
 - `mode`: `quick` or `full`.
 - `client_id` (optional): Target client ID or `all`.
 
-### 5.5 `POST /stop` and `POST /resume`
+### 6.5 `POST /stop` and `POST /resume`
 Temporarily halts or resumes client polling fleet-wide.
 
 ---
 
-## 6. Modular Dashboards & Layout Management Endpoints
+## 7. Modular Dashboards & Layout Management Endpoints
 
-### 6.1 `GET /dashboards`
+### 7.1 `GET /dashboards`
 Lists all available dashboards (both built-in presets and user-configured layouts).
 
 #### Response (`200 OK`, `application/json`)
@@ -325,7 +420,7 @@ Lists all available dashboards (both built-in presets and user-configured layout
 }
 ```
 
-### 6.2 `GET /dashboards/<id>`
+### 7.2 `GET /dashboards/<id>`
 Retrieves the specification JSON for a specific dashboard.
 
 #### Response (`200 OK`, `application/json`)
@@ -351,7 +446,7 @@ Retrieves the specification JSON for a specific dashboard.
 }
 ```
 
-### 6.3 `GET /dashboards/<id>.png`
+### 7.3 `GET /dashboards/<id>.png`
 Directly renders and streams the PNG image for the requested dashboard view `<id>`.
 Supports all query parameters accepted by `/dashboard.png` (`mock`, `kindle`, `rotate`, `w`, `h`, `scale`, `present`).
 
@@ -360,7 +455,7 @@ Supports all query parameters accepted by `/dashboard.png` (`mock`, `kindle`, `r
 curl -o weather.png "http://localhost:8000/dashboards/weather.png?kindle=pw5&rotate=90"
 ```
 
-### 6.4 `GET /dashboards/<id>/data`
+### 7.4 `GET /dashboards/<id>/data`
 Returns live (or mock) telemetry values for the data sources referenced by dashboard `<id>`.
 
 #### Response (`200 OK`, `application/json`)
@@ -383,7 +478,7 @@ Returns live (or mock) telemetry values for the data sources referenced by dashb
 }
 ```
 
-### 6.5 `POST /dashboards/<id>`
+### 7.5 `POST /dashboards/<id>`
 Creates or updates a custom dashboard layout. Gated by control token authentication (§9).
 
 #### Request Headers

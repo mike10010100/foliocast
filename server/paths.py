@@ -62,3 +62,51 @@ def resolve_dashboards_dir() -> str:
     except OSError:
         pass
     return repo_dash_dir
+
+
+def resolve_config_dir() -> str:
+    """Resolves directory for configuration files (config/). Never raises."""
+    env = os.environ.get("CONFIG_DIR", "").strip()
+    if env:
+        return env
+    docker_cfg = "/app/config"
+    if os.path.isdir(docker_cfg):
+        return docker_cfg
+    repo_cfg = os.path.join(REPO_DIR, "config")
+    try:
+        os.makedirs(repo_cfg, exist_ok=True)
+    except OSError:
+        pass
+    return repo_cfg
+
+
+def resolve_location_config_path() -> str:
+    """Search order for location configuration:
+
+    1. $LOCATION_CONFIG env var if set
+    2. /app/config/location.json if present
+    3. <repo>/config/location.json
+    """
+    env = os.environ.get("LOCATION_CONFIG", "").strip()
+    if env:
+        return env
+    docker_path = "/app/config/location.json"
+    if os.path.exists(docker_path):
+        return docker_path
+    return os.path.join(REPO_DIR, "config", "location.json")
+
+
+def resolve_data_dir() -> str:
+    """Resolves data directory (server/data/). Never raises."""
+    env = os.environ.get("DATA_DIR", "").strip()
+    if env:
+        return env
+    docker_data = "/app/data"
+    if os.path.isdir(docker_data):
+        return docker_data
+    server_data = os.path.join(SERVER_DIR, "data")
+    try:
+        os.makedirs(server_data, exist_ok=True)
+    except OSError:
+        pass
+    return server_data

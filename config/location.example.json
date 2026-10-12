@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "latitude": 40.7371,
+  "longitude": -74.0305,
+  "location_name": "Hoboken City Hall",
+  "address": "Hoboken City Hall",
+  "city": "Hoboken",
+  "state": "NJ",
+  "route": "126",
+  "destination": "NYC PORT AUTHORITY",
+  "enable_micromobility": true,
+  "max_walk_minutes": 15,
+  "citibike_max_stations": 6,
+  "stops_override": null
+}

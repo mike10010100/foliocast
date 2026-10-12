@@ -54,6 +54,14 @@ from kindle_image import (
     native_render_scale,
     sanitize_kindle_panel,
 )
+from location import (
+    LOCATION_STORE,
+    LocationConfigError,
+    LocationStorageError,
+    get_location_config,
+    reset_location_config,
+    save_location_config,
+)
 from logsafe import redact, safe_log_lines
 from ota import (
     get_valid_manifest,
@@ -61,7 +69,12 @@ from ota import (
     sha256_file,
 )
 from paths import resolve_cache_dir
-from render_dashboard import STOPS, WIDTH, get_mock_data, render_dashboard, resolve_view
+from render_dashboard import (
+    WIDTH,
+    get_mock_data,
+    render_dashboard,
+    resolve_view,
+)
 from schedule import (
     _parse_hour_env,
     clear_schedule_override,
@@ -215,6 +228,132 @@ _data_fetch_lock = threading.Lock()
 _data_cache: dict[str, Any] = {"time": 0.0, "stops": None, "status": {}, "cb": None}
 _render_cache: dict[Any, bytes] = {}
 _render_lock = threading.Lock()
+location_store = LOCATION_STORE
+
+
+def invalidate_transit_cache() -> None:
+    """Invalidates upstream data and render caches on location changes.
+
+    Forces immediate re-fetch of bus arrivals, Citi Bike station status, GTFS indices, and weather.
+    """
+    global tracker, gtfs_tracker
+    with _data_lock:
+        _data_cache["time"] = 0.0
+        _data_cache["stops"] = None
+        _data_cache["status"] = {}
+        _data_cache["cb"] = None
+    with _render_lock:
+        _render_cache.clear()
+    gtfs_tracker = None
+    try:
+        from weather import WEATHER_TRACKER
+
+        WEATHER_TRACKER.invalidate_cache()
+    except Exception:
+        pass
+
+
+def get_location_payload(cfg: Any = None) -> dict[str, Any]:
+    """Assembles unified location and transit status payload."""
+    if isinstance(cfg, tuple):
+        cfg = cfg[0]
+    if cfg is None:
+        cfg = get_location_config()
+
+    resolved_bus_stops: list[dict[str, Any]] = []
+    if getattr(cfg, "stops_override", None):
+        for item in cfg.stops_override:
+            if isinstance(item, dict):
+                resolved_bus_stops.append(dict(item))
+            elif isinstance(item, str):
+                resolved_bus_stops.append(
+                    {
+                        "id": str(item),
+                        "name": f"Stop #{item}",
+                        "subtitle": f"Stop #{item} (custom)",
+                        "walk_min": 5,
+                        "distance_m": 400,
+                    }
+                )
+    else:
+        try:
+            from transit_provider import get_transit_provider
+
+            provider = get_transit_provider()
+            resolved_bus_stops = provider.resolve_stops(
+                cfg.latitude, cfg.longitude, route=getattr(cfg, "route", "126")
+            )
+        except (ImportError, Exception):
+            from canvas import STOPS as CANVAS_STOPS
+
+            resolved_bus_stops = [dict(s) for s in CANVAS_STOPS]
+
+    cb_enabled = getattr(
+        cfg, "citibike_enabled", getattr(cfg, "enable_micromobility", True)
+    )
+    resolved_citibike_stations: list[dict[str, Any]] = []
+    if cb_enabled:
+        try:
+            from citibike_discovery import discover_citibike_stations
+
+            resolved_citibike_stations = discover_citibike_stations(
+                latitude=cfg.latitude,
+                longitude=cfg.longitude,
+                max_stations=getattr(cfg, "citibike_max_stations", 6),
+                max_walk_minutes=getattr(cfg, "max_walk_minutes", 15),
+            )
+        except (ImportError, Exception):
+            from citibike import DEFAULT_STATIONS
+
+            resolved_citibike_stations = [dict(s) for s in DEFAULT_STATIONS]
+    else:
+        resolved_citibike_stations = []
+
+    loc_name = getattr(cfg, "name", getattr(cfg, "location_name", "Hoboken City Hall"))
+    route = getattr(cfg, "route", getattr(cfg, "transit_route", "126"))
+    provider_name = getattr(cfg, "transit_provider", "njtransit")
+    max_walk_m = getattr(
+        cfg, "max_walk_distance_m", getattr(cfg, "max_walk_minutes", 15) * 80
+    )
+
+    location_dict = {
+        "latitude": cfg.latitude,
+        "longitude": cfg.longitude,
+        "location_name": loc_name,
+        "name": loc_name,
+        "address": getattr(cfg, "address", loc_name),
+        "city": getattr(cfg, "city", "Hoboken"),
+        "state": getattr(cfg, "state", "NJ"),
+        "route": route,
+        "transit_route": route,
+        "transit_provider": provider_name,
+        "destination": getattr(cfg, "destination", "NYC PORT AUTHORITY"),
+        "citibike_enabled": cb_enabled,
+        "enable_micromobility": cb_enabled,
+        "max_walk_minutes": getattr(cfg, "max_walk_minutes", 15),
+        "max_walk_distance_m": max_walk_m,
+        "citibike_max_stations": getattr(cfg, "citibike_max_stations", 6),
+        "stops_override": getattr(cfg, "stops_override", None),
+    }
+
+    return {
+        "status": "ok",
+        "location": location_dict,
+        "latitude": cfg.latitude,
+        "longitude": cfg.longitude,
+        "location_name": loc_name,
+        "name": loc_name,
+        "address": getattr(cfg, "address", loc_name),
+        "city": getattr(cfg, "city", "Hoboken"),
+        "state": getattr(cfg, "state", "NJ"),
+        "citibike_enabled": cb_enabled,
+        "transit_route": route,
+        "transit_provider": provider_name,
+        "stops": resolved_bus_stops,
+        "resolved_bus_stops": resolved_bus_stops,
+        "citibike_stations": resolved_citibike_stations,
+        "resolved_citibike_stations": resolved_citibike_stations,
+    }
 
 
 def data_cache_ttl(interactive: bool = False) -> int:
@@ -231,11 +370,18 @@ def get_fresh_data(
     most once per data_cache_ttl(). Shared by all render requests.
     Mock data requests never poison the shared cache.
     """
+    cfg = get_location_config()
+    from canvas import get_canvas_stops
+
+    active_stops = get_canvas_stops(cfg)
+
     if use_mock:
+        enable_micro = getattr(cfg, "enable_micromobility", True) if cfg else True
+        mock_cb = cb_tracker.get_mock_data() if enable_micro else []
         return (
-            get_mock_data(),
-            {str(stop["id"]): NJTransitBusTracker.STATUS_OK for stop in STOPS},
-            cb_tracker.get_mock_data(),
+            get_mock_data(stops=active_stops),
+            {str(stop["id"]): NJTransitBusTracker.STATUS_OK for stop in active_stops},
+            mock_cb,
         )
 
     now = time.time()
@@ -254,20 +400,47 @@ def get_fresh_data(
                 now - float(_data_cache["time"]) < data_cache_ttl(interactive)
             )
             if fresh:
-                return _data_cache["stops"], _data_cache["status"], _data_cache["cb"]
+                return (
+                    _data_cache["stops"],
+                    _data_cache["status"],
+                    _data_cache["cb"],
+                )
+
+        enable_micro = getattr(cfg, "enable_micromobility", True) if cfg else True
+        if enable_micro:
+            try:
+                from citibike_discovery import discover_citibike_stations
+
+                lat = cfg.latitude if cfg else 40.7371
+                lon = cfg.longitude if cfg else -74.0305
+                discovered = discover_citibike_stations(
+                    latitude=lat,
+                    longitude=lon,
+                    max_stations=getattr(cfg, "citibike_max_stations", 6) if cfg else 6,
+                    max_walk_minutes=getattr(cfg, "max_walk_minutes", 15)
+                    if cfg
+                    else 15,
+                    enable_micromobility=True,
+                )
+                cb_tracker.set_stations(discovered)
+            except Exception:
+                pass
+        else:
+            cb_tracker.set_stations([])
 
         stops_data: dict[str, Any] = {}
         stop_status: dict[str, str] = {}
         global tracker, gtfs_tracker
         if tracker is None:
             tracker = NJTransitBusTracker()
+        route = getattr(cfg, "route", "126") if cfg else "126"
         if gtfs_tracker is None:
             gtfs_tracker = GTFSBusTracker(
-                route="126", stops=[str(stop["id"]) for stop in STOPS]
+                route=route, stops=[str(stop["id"]) for stop in active_stops]
             )
 
         allow_realtime = get_schedule_state().realtime
-        for stop in STOPS:
+        for stop in active_stops:
             sid = str(stop["id"])
             arrivals = None
             try:
@@ -283,20 +456,22 @@ def get_fresh_data(
                 stop_status[sid] = NJTransitBusTracker.STATUS_OK
             else:
                 status, trips = tracker.get_arrivals_with_status(
-                    stop_id=sid, route="126"
+                    stop_id=sid, route=route
                 )
                 stops_data[sid] = [dict(normalize_arrival(t)) for t in trips]
                 stop_status[sid] = status
 
-        try:
-            snap = cb_tracker.get_snapshot()
-            if snap.status == CB_STATUS_ERROR:
+        cb_data: list[Any] = []
+        if enable_micro:
+            try:
+                snap = cb_tracker.get_snapshot()
+                if snap.status == CB_STATUS_ERROR:
+                    cb_data = []
+                else:
+                    cb_data = snap.stations
+            except Exception as e:
+                print(f"[Server] Citi Bike fetch error ({redact(e)})")
                 cb_data = []
-            else:
-                cb_data = snap.stations
-        except Exception as e:
-            print(f"[Server] Citi Bike fetch error ({redact(e)})")
-            cb_data = []
 
         with _data_lock:
             _data_cache["time"] = now
@@ -312,8 +487,13 @@ def warm_up_gtfs() -> None:
     global gtfs_tracker
     try:
         if gtfs_tracker is None:
+            cfg = get_location_config()
+            from canvas import get_canvas_stops
+
+            active_stops = get_canvas_stops(cfg)
+            route = getattr(cfg, "route", "126") if cfg else "126"
             gtfs_tracker = GTFSBusTracker(
-                route="126", stops=[str(stop["id"]) for stop in STOPS]
+                route=route, stops=[str(stop["id"]) for stop in active_stops]
             )
         gtfs_tracker.ensure_index(wait=True)
     except Exception as e:
@@ -334,6 +514,11 @@ def get_fresh_dashboard_image(
     available_views: Optional[list[str]] = None,
     weather_data: Any = None,
 ) -> Image.Image:
+    cfg = get_location_config()
+    from canvas import get_canvas_stops
+
+    active_stops = get_canvas_stops(cfg)
+
     stops_data, stop_status, cb_data = get_fresh_data(
         use_mock=use_mock, interactive=interactive
     )
@@ -376,6 +561,8 @@ def get_fresh_dashboard_image(
         status_note=status_note,
         available_views=available_views,
         weather_data=weather_data,
+        stops=active_stops,
+        location_config=cfg,
     )
 
     img_bytes = buf.getvalue()
@@ -536,6 +723,101 @@ class DashboardHandler(BaseHTTPRequestHandler):
         registry = get_device_registry()
         if client_id != "default" or parsed.path in ["/log", "/diag"]:
             registry.get_or_register(client_id, remote_ip)
+
+        if parsed.path in ("/api/location", "/api/location/"):
+            if not check_control_auth(self):
+                self._send_forbidden()
+                return
+
+            body = self._read_body(65536)
+            if body is None:
+                return
+
+            data: dict[str, Any] = {}
+            if body and body.strip():
+                try:
+                    data = json.loads(body.decode("utf-8"))
+                except (ValueError, UnicodeDecodeError) as json_err:
+                    ct = self.headers.get("Content-Type", "")
+                    if "form-urlencoded" in ct and b"=" in body:
+                        qs = urllib.parse.parse_qs(
+                            body.decode("utf-8", errors="ignore")
+                        )
+                        data = {k: v[0] if len(v) == 1 else v for k, v in qs.items()}
+                        for num_k in ("latitude", "longitude"):
+                            if num_k in data:
+                                try:
+                                    data[num_k] = float(data[num_k])
+                                except (ValueError, TypeError):
+                                    pass
+                        for int_k in (
+                            "max_walk_minutes",
+                            "citibike_max_stations",
+                            "version",
+                        ):
+                            if int_k in data:
+                                try:
+                                    data[int_k] = int(data[int_k])
+                                except (ValueError, TypeError):
+                                    pass
+                        for bool_k in ("enable_micromobility", "citibike_enabled"):
+                            if bool_k in data:
+                                val_str = str(data[bool_k]).strip().lower()
+                                if val_str in ("1", "true", "yes", "on"):
+                                    data[bool_k] = True
+                                elif val_str in ("0", "false", "no", "off"):
+                                    data[bool_k] = False
+                    else:
+                        self._send_json(400, {"error": f"invalid JSON: {json_err}"})
+                        return
+
+            if not isinstance(data, dict):
+                self._send_json(400, {"error": "expected a JSON object"})
+                return
+
+            action = str(data.get("action", "")).strip().lower()
+            try:
+                if action == "reset":
+                    res = reset_location_config()
+                else:
+                    cfg_data = data.get("config", data)
+                    if not isinstance(cfg_data, dict):
+                        self._send_json(400, {"error": "config must be an object"})
+                        return
+                    res = save_location_config(cfg_data)
+
+                new_cfg = res[0] if isinstance(res, tuple) else res
+                invalidate_transit_cache()
+                try:
+                    from weather import WEATHER_TRACKER
+
+                    WEATHER_TRACKER.update_from_config(new_cfg)
+                except Exception:
+                    pass
+                if getattr(new_cfg, "enable_micromobility", True):
+                    try:
+                        from citibike_discovery import discover_citibike_stations
+
+                        disc = discover_citibike_stations(
+                            latitude=new_cfg.latitude,
+                            longitude=new_cfg.longitude,
+                            max_stations=getattr(new_cfg, "citibike_max_stations", 6),
+                            max_walk_minutes=getattr(new_cfg, "max_walk_minutes", 15),
+                            enable_micromobility=True,
+                        )
+                        cb_tracker.set_stations(disc)
+                    except Exception:
+                        pass
+                else:
+                    cb_tracker.set_stations([])
+                self._send_json(200, get_location_payload(new_cfg))
+            except LocationStorageError as err:
+                self._send_json(500, {"error": str(err)})
+            except LocationConfigError as err:
+                self._send_json(400, {"error": str(err)})
+            except Exception as err:
+                self._send_json(500, {"error": str(err)})
+            return
 
         if parsed.path == "/stop":
             if not check_control_auth(self):
@@ -898,6 +1180,13 @@ class DashboardHandler(BaseHTTPRequestHandler):
             and self._is_client_device(params)
         ):
             registry.get_or_register(client_id, remote_ip)
+
+        if parsed.path in ("/api/location", "/api/location/"):
+            try:
+                self._send_json(200, get_location_payload())
+            except Exception as err:
+                self._send_json(500, {"error": str(err)})
+            return
 
         if parsed.path in ["/healthz", "/health"]:
             payload = json.dumps(

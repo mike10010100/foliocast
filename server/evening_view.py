@@ -30,13 +30,16 @@ def render_evening_view(
     stop_status: Optional[dict[str, str]] = None,
     width: int = WIDTH,
     height: int = HEIGHT,
+    stops: Optional[list[dict[str, Any]]] = None,
+    location_config: Optional[Any] = None,
 ):
     """
     Afternoon / Evening View:
-    NJ Transit 126 bus arrivals are the primary hero display with large minute countdowns
+    Transit bus arrivals are the primary hero display with large minute countdowns
     and decision badges. Citi Bike dock inventory is summarized across the bottom.
     """
     has_citibike = bool(citibike_data)
+    active_stops = stops if stops is not None else STOPS
     is_tall = height >= 580
 
     font_title = get_font(21, bold=True)
@@ -102,26 +105,54 @@ def render_evening_view(
             draw, batt_x, 16, batt_level, is_charging=is_charging, font=font_batt
         )
 
-    b_x1 = draw_header_badge(draw, 20, 14, "126", font_title, pad_x=16)
-    title_text = "HOBOKEN → NYC PORT AUTHORITY"
+    route_badge = str(
+        getattr(location_config, "route", "126") if location_config else "126"
+    )
+    b_x1 = draw_header_badge(draw, 20, 14, route_badge, font_title, pad_x=16)
+
+    city_name = str(
+        getattr(location_config, "city", "Hoboken") if location_config else "Hoboken"
+    ).upper()
+    dest_name = str(
+        getattr(location_config, "destination", "NYC Port Authority")
+        if location_config
+        else "NYC PORT AUTHORITY"
+    ).upper()
+    agency_name = str(
+        getattr(location_config, "transit_agency", "NJ TRANSIT")
+        if location_config
+        else "NJ TRANSIT"
+    ).upper()
+
+    title_text = f"{city_name} → {dest_name}"
     max_title_w = (batt_x - 16) - (b_x1 + 12)
     title_text = ellipsize_to_width(draw, title_text, font_title, max(50, max_title_w))
     draw.text((b_x1 + 12, 15), title_text, fill="black", font=font_title)
+
     sub_title = (
-        "NJ TRANSIT 126 & CITI BIKE LIVE TRACKER"
+        f"{agency_name} {route_badge} & CITI BIKE LIVE TRACKER"
         if has_citibike
-        else "NJ TRANSIT REAL-TIME TRACKER"
+        else f"{agency_name} {route_badge} REAL-TIME TRACKER"
+    )
+    sub_title = ellipsize_to_width(
+        draw, sub_title, font_header_sub, max(50, max_title_w)
     )
     draw.text((b_x1 + 12, 39), sub_title, fill="#555555", font=font_header_sub)
 
     draw.line([(20, 62), (width - 20, 62)], fill="black", width=2)
 
-    col_w = (width - 40 - 20) // 2
-    col_h = (346 if is_tall else 276) if has_citibike else (475 if is_tall else 345)
-    card_y = 70 if has_citibike else 80
-    xs = [20, 20 + col_w + 20]
+    num_stops = max(1, min(2, len(active_stops)))
+    if num_stops == 1:
+        col_w = width - 40
+        xs = [20]
+    else:
+        col_w = (width - 40 - 20) // 2
+        xs = [20, 20 + col_w + 20]
 
-    for i, stop_cfg in enumerate(STOPS):
+    col_h = (346 if is_tall else 276) if has_citibike else (462 if is_tall else 345)
+    card_y = 70 if has_citibike else 80
+
+    for i, stop_cfg in enumerate(active_stops[:num_stops]):
         stop_id = str(stop_cfg["id"])
         stop_name = str(stop_cfg["name"])
         stop_subtitle = str(stop_cfg["subtitle"])
@@ -146,19 +177,6 @@ def render_evening_view(
         draw.rectangle([x0 + 1, y0 + pill_h - 12, x1 - 1, y0 + pill_h], fill="#f2f2f2")
         draw.line([(x0, y0 + pill_h), (x1, y0 + pill_h)], fill="black", width=2)
 
-        draw.text(
-            (x0 + 12, y0 + (6 if is_tall else (5 if has_citibike else 8))),
-            stop_name.upper(),
-            fill="black",
-            font=font_stop_name,
-        )
-        draw.text(
-            (x0 + 12, y0 + (28 if is_tall else (26 if has_citibike else 32))),
-            stop_subtitle,
-            fill="#555555",
-            font=font_header_sub,
-        )
-
         walk_text = f"{walk_min} MIN WALK"
         wb = draw.textbbox((0, 0), walk_text, font=font_walk)
         ww = wb[2] - wb[0]
@@ -174,6 +192,26 @@ def render_evening_view(
             walk_text,
             fill="white",
             font=font_walk,
+        )
+
+        max_stop_title_w = (x1 - ww - 25) - (x0 + 12)
+        stop_name_str = ellipsize_to_width(
+            draw, stop_name.upper(), font_stop_name, max_stop_title_w
+        )
+        draw.text(
+            (x0 + 12, y0 + (6 if is_tall else (5 if has_citibike else 8))),
+            stop_name_str,
+            fill="black",
+            font=font_stop_name,
+        )
+        stop_sub_str = ellipsize_to_width(
+            draw, stop_subtitle, font_header_sub, max_stop_title_w
+        )
+        draw.text(
+            (x0 + 12, y0 + (28 if is_tall else (26 if has_citibike else 32))),
+            stop_sub_str,
+            fill="#555555",
+            font=font_header_sub,
         )
 
         arrivals = stops_data.get(stop_id, [])
@@ -370,9 +408,11 @@ def render_evening_view(
                     fill="#555555",
                     font=font_walk,
                 )
+                route_disp = str(next_bus.get("route") or route_badge)
+                dest_disp = str(next_bus.get("destination") or "NYC")
                 line2 = ellipsize_to_width(
                     draw,
-                    f"126 to NYC → {next_eta}{next_bus_num}",
+                    f"{route_disp} to {dest_disp} → {next_eta}{next_bus_num}",
                     font_detail_bold,
                     inner_max_w,
                 )
@@ -450,9 +490,17 @@ def render_evening_view(
             fill="black",
             width=1,
         )
+        loc_name = str(
+            getattr(location_config, "location_name", "Hoboken City Hall")
+            if location_config
+            else "Hoboken City Hall"
+        ).upper()
+        cb_bar_title = f"CITI BIKE • NEAREST E-BIKE DOCKS TO {loc_name}"
+        max_cb_bar_w = (cb_x1 - 14) - (cb_x0 + 14)
+        cb_bar_title = ellipsize_to_width(draw, cb_bar_title, font_cb_tag, max_cb_bar_w)
         draw.text(
             (cb_x0 + 14, cb_y0 + (6 if is_tall else 5)),
-            "CITI BIKE • NEAREST E-BIKE DOCKS TO HOBOKEN CITY HALL",
+            cb_bar_title,
             fill="#444444",
             font=font_cb_tag,
         )
@@ -503,9 +551,12 @@ def render_evening_view(
             tb = draw.textbbox((0, 0), c["name"].upper(), font=cb_name_font)
             if (tb[2] - tb[0]) > max_name_w:
                 cb_name_font = get_font(12, bold=True)
+            cb_name_str = ellipsize_to_width(
+                draw, c["name"].upper(), cb_name_font, max_name_w
+            )
             draw.text(
                 (cx0 + 14, body_y0 + r_name),
-                c["name"].upper(),
+                cb_name_str,
                 fill="black",
                 font=cb_name_font,
             )
