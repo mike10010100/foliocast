@@ -90,11 +90,12 @@ check-sh:
 	@echo "==> Checking shell scripts syntax..."
 	@bash -n scripts/check_coverage_go.sh
 	@bash -n scripts/deploy.sh
+	@bash -n scripts/install_kindle_usb.sh
 	@bash -n tests/test_launcher.sh
 	@sh -n $(LAUNCHER)
 	@if command -v shellcheck >/dev/null 2>&1; then \
 		echo "==> Running shellcheck..."; \
-		shellcheck -s bash scripts/check_coverage_go.sh scripts/deploy.sh tests/test_launcher.sh; \
+		shellcheck -s bash scripts/check_coverage_go.sh scripts/deploy.sh scripts/install_kindle_usb.sh tests/test_launcher.sh; \
 		shellcheck -s sh $(LAUNCHER); \
 	fi
 

@@ -9,6 +9,11 @@ tracker-arm
 tracker-arm.new
 tracker-arm.manifest.json
 tracker-arm.manifest.json.new
+foliocast-arm
+foliocast-arm.new
+foliocast-arm.manifest.json
+foliocast-arm.manifest.json.new
+build/
 client-go/client-go
 client-go/cover.out
 *.out

@@ -21,31 +21,24 @@ func TestParseDiscoveryOffer(t *testing.T) {
 		wantErr     bool
 	}{
 		{
-			name:        "Standard offer with version",
-			input:       "TRANSIT_TRACKER_OFFER http://192.168.86.193:8000 1.4.0\n",
+			name:        "Standard Foliocast offer with version",
+			input:       "FOLIOCAST_OFFER http://192.168.86.193:8000 1.42.0\n",
 			wantURL:     "http://192.168.86.193:8000",
-			wantVersion: "1.4.0",
+			wantVersion: "1.42.0",
 			wantErr:     false,
 		},
 		{
 			name:        "Trailing slash in offer URL gets trimmed",
-			input:       "TRANSIT_TRACKER_OFFER http://10.0.0.5:8000/ 1.4.0",
+			input:       "FOLIOCAST_OFFER http://10.0.0.5:8000/ 1.42.0",
 			wantURL:     "http://10.0.0.5:8000",
-			wantVersion: "1.4.0",
+			wantVersion: "1.42.0",
 			wantErr:     false,
 		},
 		{
 			name:        "Offer without version",
-			input:       "TRANSIT_TRACKER_OFFER http://192.168.1.50:8000",
+			input:       "FOLIOCAST_OFFER http://192.168.1.50:8000",
 			wantURL:     "http://192.168.1.50:8000",
 			wantVersion: "",
-			wantErr:     false,
-		},
-		{
-			name:        "Legacy BUS_TRACKER_OFFER still accepted",
-			input:       "BUS_TRACKER_OFFER http://192.168.1.60:8000 1.4.0",
-			wantURL:     "http://192.168.1.60:8000",
-			wantVersion: "1.4.0",
 			wantErr:     false,
 		},
 		{
@@ -149,8 +142,8 @@ func TestDiscoverViaUDPIntegration(t *testing.T) {
 					continue
 				}
 			}
-			if strings.Contains(string(buf[:n]), "TRANSIT_TRACKER_DISCOVER") {
-				reply := fmt.Sprintf("TRANSIT_TRACKER_OFFER %s 1.4.0\n", ts.URL)
+			if strings.Contains(string(buf[:n]), "FOLIOCAST_DISCOVER") {
+				reply := fmt.Sprintf("FOLIOCAST_OFFER %s 1.42.0\n", ts.URL)
 				_, _ = udpConn.WriteTo([]byte(reply), raddr)
 			}
 		}

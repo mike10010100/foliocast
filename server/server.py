@@ -1208,7 +1208,6 @@ class DashboardHandler(BaseHTTPRequestHandler):
             payload = json.dumps(
                 {
                     "service": "foliocast",
-                    "legacy_service": "transit-tracker",
                     "version": SERVER_VERSION,
                 }
             ).encode("utf-8")
@@ -1341,7 +1340,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 self._send_empty(404)
                 return
 
-        if parsed.path == "/tracker-arm.manifest":
+        if parsed.path in ("/foliocast-arm.manifest", "/tracker-arm.manifest"):
             info = get_valid_manifest()
             if info is None:
                 self._send_empty(404)
@@ -1473,7 +1472,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.end_headers()
             return
 
-        if parsed.path == "/tracker-arm":
+        if parsed.path in ("/foliocast-arm", "/tracker-arm"):
             blob = load_binary()
             if blob is None:
                 self._send_empty(404)

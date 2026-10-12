@@ -286,7 +286,7 @@ func TestPersistServerURL_AllWritesFail(t *testing.T) {
 }
 
 func TestParseDiscoveryOffer_Malformed(t *testing.T) {
-	if _, err := ParseDiscoveryOffer("TRANSIT_TRACKER_OFFER"); err == nil {
+	if _, err := ParseDiscoveryOffer("FOLIOCAST_OFFER"); err == nil {
 		t.Fatal("expected error for offer with < 2 tokens")
 	}
 }
@@ -365,7 +365,7 @@ func TestDiscoverySentinelErrors(t *testing.T) {
 	})
 
 	t.Run("ErrMalformedOffer", func(t *testing.T) {
-		_, err := ParseDiscoveryOffer("TRANSIT_TRACKER_OFFER")
+		_, err := ParseDiscoveryOffer("FOLIOCAST_OFFER")
 		if !errors.Is(err, ErrMalformedOffer) {
 			t.Errorf("got %v, want errors.Is ErrMalformedOffer", err)
 		}

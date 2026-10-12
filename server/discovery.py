@@ -103,7 +103,6 @@ def start_discovery_responder(
                 try:
                     data, addr = sock.recvfrom(1024)
                     msg = data.decode("utf-8", errors="ignore").strip()
-                    # Accept FOLIOCAST_DISCOVER as primary and legacy probes for backward compatibility
                     if "FOLIOCAST_DISCOVER" in msg:
                         resp_ip = local_ip_for_peer(addr[0], addr[1])
                         if not resp_ip:
@@ -113,22 +112,6 @@ def start_discovery_responder(
                             continue
                         url = format_http_url(resp_ip, http_port)
                         reply = f"FOLIOCAST_OFFER {url} {version}\n".encode()
-                        sock.sendto(reply, addr)
-                        print(
-                            f"[Discovery] Answered Foliocast probe from {addr[0]}:{addr[1]} -> {url}"
-                        )
-                    elif (
-                        "TRANSIT_TRACKER_DISCOVER" in msg
-                        or "BUS_TRACKER_DISCOVER" in msg
-                    ):
-                        resp_ip = local_ip_for_peer(addr[0], addr[1])
-                        if not resp_ip:
-                            print(
-                                f"[Discovery] No route back to {addr[0]}; not answering"
-                            )
-                            continue
-                        url = format_http_url(resp_ip, http_port)
-                        reply = f"TRANSIT_TRACKER_OFFER {url} {version}\n".encode()
                         sock.sendto(reply, addr)
                         print(
                             f"[Discovery] Answered probe from {addr[0]}:{addr[1]} -> {url}"
@@ -145,7 +128,7 @@ def start_mdns_advertiser(
     http_port: int = 8000, version: str = VERSION
 ) -> tuple[Optional[Any], Optional[Any]]:
     """
-    Registers _foliocast._tcp.local. and _transittracker._tcp.local. services with Zeroconf / mDNS.
+    Registers _foliocast._tcp.local. service with Zeroconf / mDNS.
     """
     if not ZEROCONF_AVAILABLE:
         print("[mDNS] Zeroconf library not installed; skipping mDNS advertisement.")
@@ -160,7 +143,6 @@ def start_mdns_advertiser(
         desc = {"version": version, "endpoint": "/dashboard.png"}
 
         zc = Zeroconf()
-        # 1. Primary: FolioCast
         info_foliocast = ServiceInfo(
             "_foliocast._tcp.local.",
             "FolioCast._foliocast._tcp.local.",
@@ -170,20 +152,7 @@ def start_mdns_advertiser(
             server="foliocast.local.",
         )
         zc.register_service(info_foliocast)
-
-        # 2. Legacy alias: TransitTracker
-        info_legacy = ServiceInfo(
-            "_transittracker._tcp.local.",
-            "TransitTracker._transittracker._tcp.local.",
-            addresses=[ip_bytes],
-            port=http_port,
-            properties=desc,
-            server="transittracker.local.",
-        )
-        zc.register_service(info_legacy)
-        print(
-            f"[mDNS] Registered FolioCast & TransitTracker services at {local_ip}:{http_port}"
-        )
+        print(f"[mDNS] Registered FolioCast service at {local_ip}:{http_port}")
         return zc, info_foliocast
     except Exception as e:
         print(f"[mDNS] Failed to register Zeroconf service: {e}")

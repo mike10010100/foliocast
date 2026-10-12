@@ -457,7 +457,6 @@ class TestAuthenticatedEndpoints(unittest.TestCase):
         self.assertNotIn("X-Tracker-Auth", headers)
         data = json.loads(body)
         self.assertEqual(data["service"], "foliocast")
-        self.assertEqual(data.get("legacy_service"), "transit-tracker")
 
         # Valid nonce -> 200 with signed auth header
         nonce = "aabbccddeeff00112233445566778899"
@@ -470,7 +469,6 @@ class TestAuthenticatedEndpoints(unittest.TestCase):
 
         data = json.loads(body)
         self.assertEqual(data["service"], "foliocast")
-        self.assertEqual(data.get("legacy_service"), "transit-tracker")
         self.assertEqual(data["version"], server.SERVER_VERSION)
 
         # Verify signature
