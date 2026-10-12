@@ -5,6 +5,7 @@ comprehensive containment harness that asserts every glyph stays inside the box
 it was drawn into across both views, both heights, and a matrix of data shapes.
 """
 
+import dataclasses
 import os
 import unittest
 from datetime import datetime
@@ -578,6 +579,29 @@ class TestTextStaysInsideContainers(unittest.TestCase):
                 )
                 self.assertGreater(len(texts), 3, f"[{ctx}] no text captured")
                 self._assert_all_contained(containers, texts, ctx)
+
+    def test_weather_dashboard_precip_100_percent_contained(self):
+        """
+        Asserts that on the weather dashboard with 100% precipitation,
+        every text stays strictly inside its enclosing card container across
+        standard 800x480, 800x600, and native Kindle scale.
+        """
+        from weather import get_mock_weather_data
+
+        wx_100 = dataclasses.replace(get_mock_weather_data(), precip_prob=100)
+        for height, scale in [(480, 1.0), (600, 1.0), (600, 1648 / 800)]:
+            ctx = f"weather h={height} scale={scale:.2f} precip=100"
+            containers, texts = self._render_and_collect(
+                {},
+                [],
+                "weather",
+                height,
+                scale=scale,
+                weather_data=wx_100,
+            )
+            self.assertGreater(len(containers), 3, f"[{ctx}] no containers captured")
+            self.assertGreater(len(texts), 3, f"[{ctx}] no text captured")
+            self._assert_all_contained(containers, texts, ctx)
 
 
 class TestScaledDraw(unittest.TestCase):

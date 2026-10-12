@@ -4,6 +4,7 @@ discovery/image formatting helpers.
 """
 
 import base64
+import dataclasses
 import hashlib
 import io
 import json
@@ -21,6 +22,7 @@ from dashboards import REGISTRY
 from PIL import Image
 from state_machine import ConfigStore
 from test_server_http import ServerHTTPTestBase, _auth_headers, _http, _http_get
+from weather import get_mock_weather_data
 
 import server
 from server import format_for_kindle, sha256_file
@@ -34,6 +36,21 @@ class TestDashboardRoute(ServerHTTPTestBase):
         self.assertIn("X-Kindle-Poll-Interval", headers)
         img = Image.open(io.BytesIO(body))
         self.assertEqual(img.size, (800, 480))
+
+    def test_mock_weather_dashboard_100_percent_precipitation(self):
+        """Verifies real HTTP route serving weather dashboard with 100% precipitation."""
+        wx_100 = dataclasses.replace(get_mock_weather_data(), precip_prob=100)
+        with patch("server.get_mock_weather_data", return_value=wx_100):
+            # Clear render cache so fresh render is triggered
+            with server._render_lock:
+                server._render_cache.clear()
+            status, headers, body = _http_get(
+                self.port, "/dashboard.png?mock=1&view=weather"
+            )
+            self.assertEqual(status, 200)
+            self.assertEqual(headers.get("Content-Type"), "image/png")
+            img = Image.open(io.BytesIO(body))
+            self.assertEqual(img.size, (800, 480))
 
     def test_mock_dashboard_kindle_rotation(self):
         status, headers, body = _http_get(

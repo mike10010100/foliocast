@@ -545,10 +545,25 @@ class MetricCardWidget(Widget):
                 size=icon_s,
                 glyph="UMBRELLA",
             )
-            font_val = get_font(56 if is_very_tall else 48, bold=True)
             pval_str = f"{val_str}%" if not val_str.endswith("%") else val_str
-            text_x = rect.x0 + (88 if is_very_tall else 74)
-            draw.text((text_x, body_top - 2), pval_str, fill="black", font=font_val)
+            text_x = rect.x0 + (86 if is_very_tall else 72)
+            max_text_x = rect.x1 - 16
+            base_font_size = 56 if is_very_tall else 48
+            font_size = base_font_size
+            font_val = get_font(font_size, bold=True)
+            tb = draw.textbbox((text_x, 0), pval_str, font=font_val)
+            while tb[2] > max_text_x and font_size > 20:
+                font_size -= 2
+                font_val = get_font(font_size, bold=True)
+                tb = draw.textbbox((text_x, 0), pval_str, font=font_val)
+
+            y_offset = (base_font_size - font_size) // 3
+            draw.text(
+                (text_x, body_top - 2 + y_offset),
+                pval_str,
+                fill="black",
+                font=font_val,
+            )
 
             font_sub = get_font(12, bold=False)
             sub_text = self.subtitle or "Rain probability today"
@@ -595,14 +610,18 @@ class MetricCardWidget(Widget):
             draw.text(
                 (mx0, meter_y0 + meter_h + 3), "0%", fill="#777777", font=font_meter
             )
+            bb_50 = draw.textbbox((0, 0), "50%", font=font_meter)
+            w_50 = bb_50[2] - bb_50[0]
             draw.text(
-                (mx0 + meter_w // 2 - 8, meter_y0 + meter_h + 3),
+                (mx0 + (meter_w - w_50) // 2, meter_y0 + meter_h + 3),
                 "50%",
                 fill="#777777",
                 font=font_meter,
             )
+            bb_100 = draw.textbbox((0, 0), "100%", font=font_meter)
+            w_100 = bb_100[2] - bb_100[0]
             draw.text(
-                (mx1 - 24, meter_y0 + meter_h + 3),
+                (mx1 - w_100, meter_y0 + meter_h + 3),
                 "100%",
                 fill="#777777",
                 font=font_meter,
