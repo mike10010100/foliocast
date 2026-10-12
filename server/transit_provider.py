@@ -264,10 +264,10 @@ class Hoboken126Provider(TransitStopProvider):
                     if (
                         isinstance(walk_min, bool)
                         or not isinstance(walk_min, int)
-                        or not (1 <= walk_min <= 180)
+                        or not (0 <= walk_min <= 180)
                     ):
                         raise ValueError(
-                            f"overrides[{i}].walk_min must be between 1 and 180"
+                            f"overrides[{i}].walk_min must be between 0 and 180"
                         )
                 else:
                     walk_min = calc_walk

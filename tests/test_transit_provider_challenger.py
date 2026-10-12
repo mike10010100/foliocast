@@ -290,9 +290,8 @@ class TestAdversarialErrorInjection(unittest.TestCase):
                 self.provider.resolve_stops(self.lat, self.lon, overrides=c)
 
     def test_reject_walk_min_out_of_range(self) -> None:
-        """walk_min < 1, > 180, or non-integer must raise ValueError."""
+        """walk_min < 0, > 180, or non-integer must raise ValueError."""
         invalid_walk_vals: list[Any] = [
-            0,
             -1,
             -50,
             181,
@@ -308,6 +307,12 @@ class TestAdversarialErrorInjection(unittest.TestCase):
                 self.provider.resolve_stops(
                     self.lat, self.lon, overrides=[{"id": "20512", "walk_min": w}]
                 )
+
+        # 0 must be accepted as valid walk time for adjacent/at-stop locations
+        res_zero = self.provider.resolve_stops(
+            self.lat, self.lon, overrides=[{"id": "20512", "walk_min": 0}]
+        )
+        self.assertEqual(res_zero[0]["walk_min"], 0)
 
     def test_reject_distance_m_out_of_range(self) -> None:
         """distance_m < 0, > 50000, or non-integer must raise ValueError."""

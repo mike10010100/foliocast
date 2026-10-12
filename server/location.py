@@ -235,7 +235,7 @@ def _parse_stops_override(
             if "walk_min" in item:
                 stop_dict["walk_min"] = _as_int(
                     item["walk_min"],
-                    1,
+                    0,
                     MAX_WALK_MINUTES_LIMIT,
                     f"{item_where}.walk_min",
                 )

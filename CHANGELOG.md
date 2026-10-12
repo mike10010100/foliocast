@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.42.4] - 2026-10-12
+
+### Fixed
+
+- **Real-Testing Campaign Invariant Rectifications** (`server/canvas.py`, `server/dashboard_dsl.py`, `server/location.py`, `server/transit_provider.py`, `tests/test_real_testing_regressions.py`):
+  - **Status Abbreviation Honesty**: Updated `format_hero_eta` to map unmonitored timetable and status arrivals (`Scheduled`, `Canceled`, `Delayed`) to canonical, readable transit abbreviations (`SCHED`, `CANC`, `DELAY`) instead of raw 7-character slicing that truncated `"Scheduled"` to `"Schedul"`. Updated codified test assertions in `tests/test_hero_eta_and_badges.py`.
+  - **Zero-Minute Walk Support**: Allowed `walk_min=0` across `LocationConfig` stops overrides and `Hoboken126Provider.resolve_stops`, supporting users residing directly at or adjacent to transit stops in alignment with `docs/api.md` and transit catalog distance math.
+  - **Weather Hero Layout Containment**: Bounded `wx.condition` and daily high/low temperatures against card right boundaries using `ellipsize_to_width`, preventing long descriptions (e.g. WMO 99 `Thunderstorm with heavy hail`) from overflowing card boundaries and colliding with adjacent metric cards.
+  - **Header Subtitle Containment**: Constrained `HeaderWidget` subtitles to available left space, preventing visual overlap with battery and time indicators.
+  - **Regression Verification Suite**: Added `tests/test_real_testing_regressions.py` preserving failure cases discovered during ground-up real-testing execution.
+
+---
+
 ## [1.42.3] - 2026-10-12
 
 ### Fixed

@@ -457,12 +457,17 @@ class TestHoboken126ProviderOverrides(unittest.TestCase):
         # Invalid walk_min out of range
         with self.assertRaises(ValueError):
             self.provider.resolve_stops(
-                40.7371, -74.0305, overrides=[{"id": "20512", "walk_min": 0}]
+                40.7371, -74.0305, overrides=[{"id": "20512", "walk_min": -1}]
             )
         with self.assertRaises(ValueError):
             self.provider.resolve_stops(
                 40.7371, -74.0305, overrides=[{"id": "20512", "walk_min": 200}]
             )
+        # walk_min 0 is valid
+        res_zero = self.provider.resolve_stops(
+            40.7371, -74.0305, overrides=[{"id": "20512", "walk_min": 0}]
+        )
+        self.assertEqual(res_zero[0]["walk_min"], 0)
 
         # Invalid distance_m out of range
         with self.assertRaises(ValueError):
