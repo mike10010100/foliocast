@@ -388,11 +388,11 @@ class HeaderWidget(Widget):
 
         # Left badge + title
         bx1 = draw_header_badge(draw, rect.x0, y_top, self.badge, font_title, pad_x=12)
-        title_text = ellipsize_to_width(
-            draw, self.title, font_title, max(50, batt_x - bx1 - 20)
-        )
+        avail_title_w = max(50, batt_x - bx1 - 20)
+        title_text = ellipsize_to_width(draw, self.title, font_title, avail_title_w)
         draw.text((bx1 + 12, y_top + 1), title_text, fill="black", font=font_title)
-        draw.text((bx1 + 12, y_sub), self.subtitle, fill="#555555", font=font_sub)
+        sub_text = ellipsize_to_width(draw, self.subtitle, font_sub, avail_title_w)
+        draw.text((bx1 + 12, y_sub), sub_text, fill="#555555", font=font_sub)
 
         if self.show_divider:
             draw.line([(rect.x0, rect.y1), (rect.x1, rect.y1)], fill="black", width=2)
@@ -1002,10 +1002,18 @@ class WeatherHeroWidget(Widget):
         hl_x = temp_x + tw + (40 if is_tall_hero else 44)
         font_cond = get_font(22 if is_tall_hero else 18, bold=True)
         font_detail_bold = get_font(14 if is_tall_hero else 13, bold=True)
-        draw.text((hl_x, body_top + 4), wx.condition, fill="black", font=font_cond)
+        max_cond_w = max(40, (rect.x1 - 16) - hl_x)
+        cond_text = ellipsize_to_width(draw, wx.condition, font_cond, max_cond_w)
+        draw.text((hl_x, body_top + 4), cond_text, fill="black", font=font_cond)
+        hl_text = ellipsize_to_width(
+            draw,
+            f"High: {wx.temp_max}°  •  Low: {wx.temp_min}°",
+            font_detail_bold,
+            max_cond_w,
+        )
         draw.text(
             (hl_x, body_top + (34 if is_tall_hero else 28)),
-            f"High: {wx.temp_max}°  •  Low: {wx.temp_min}°",
+            hl_text,
             fill="#333333",
             font=font_detail_bold,
         )
@@ -1095,8 +1103,12 @@ class WeatherHeroWidget(Widget):
             metrics_y = body_top + 78
             font_detail = get_font(13, bold=False)
             metrics_str = f"Feels like {wx.apparent_temp}°   •   Humidity: {wx.humidity}%   •   Wind: {wx.wind_speed} mph"
+            max_met_w = max(50, (rect.x1 - 18) - (rect.x0 + 18))
             draw.text(
-                (rect.x0 + 18, metrics_y), metrics_str, fill="#444444", font=font_detail
+                (rect.x0 + 18, metrics_y),
+                ellipsize_to_width(draw, metrics_str, font_detail, max_met_w),
+                fill="#444444",
+                font=font_detail,
             )
 
         # Bottom decision / status advisory banner

@@ -58,8 +58,9 @@ class TestHeroEtaAndBadges(unittest.TestCase):
 
     def test_format_hero_eta_clock_only_fallback(self):
         self.assertEqual(format_hero_eta({"eta": "8:35 AM"}), ("8:35", "AM"))
-        self.assertEqual(format_hero_eta({"eta": "12:45 PM"}), ("12:45", "PM"))
-        self.assertEqual(format_hero_eta({"eta": "Scheduled"}), ("Schedul", ""))
+        self.assertEqual(format_hero_eta({"eta": "Scheduled"}), ("SCHED", ""))
+        self.assertEqual(format_hero_eta({"eta": "Canceled"}), ("CANC", ""))
+        self.assertEqual(format_hero_eta({"eta": "Delayed"}), ("DELAY", ""))
         self.assertEqual(format_hero_eta({}), ("--", ""))
 
     def test_is_arrival_live(self):

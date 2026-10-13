@@ -453,6 +453,14 @@ def format_hero_eta(first_bus: dict[str, Any]) -> tuple[str, str]:
     if time_match_any:
         return time_match_any.group(1), ""
 
+    eta_upper = first_eta_raw.upper().strip()
+    if eta_upper.startswith("SCHED"):
+        return "SCHED", ""
+    if eta_upper.startswith("CANCEL"):
+        return "CANC", ""
+    if eta_upper.startswith("DELAY"):
+        return "DELAY", ""
+
     return (first_eta_raw[:7].strip() if first_eta_raw else "--"), ""
 
 
