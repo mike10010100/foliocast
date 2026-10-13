@@ -732,6 +732,54 @@ class TestLocationConfigStore(unittest.TestCase):
         temp_files = glob.glob(os.path.join(self.tmp_dir.name, "*.tmp*"))
         self.assertEqual(temp_files, [], f"Leaked temporary files: {temp_files}")
 
+    def test_store_reset_preserves_custom_file_on_disk(self):
+        """Verifies that calling store.reset() reloads config but never modifies or overwrites the file on disk."""
+        store = loc.LocationConfigStore(
+            path=self.config_path, env={}, log=lambda *_: None
+        )
+        custom_payload = {
+            "latitude": 40.7482,
+            "longitude": -74.0305,
+            "location_name": "Custom Spot",
+            "name": "Custom Spot",
+            "address": "123 Main St",
+        }
+        store.save_config(custom_payload)
+        with open(self.config_path, "rb") as f:
+            content_before = f.read()
+
+        # Calling reset() must reload state without altering content on disk
+        store.reset()
+        with open(self.config_path, "rb") as f:
+            content_after = f.read()
+
+        self.assertEqual(content_before, content_after)
+        self.assertEqual(store.get().location_name, "Custom Spot")
+        self.assertAlmostEqual(store.get().latitude, 40.7482)
+
+    def test_repo_config_location_json_never_modified_by_test_operations(self):
+        """Verifies that location operations in tests never write to the repository's config/location.json."""
+        from paths import REPO_DIR
+
+        repo_loc = os.path.join(REPO_DIR, "config", "location.json")
+        if not os.path.exists(repo_loc):
+            self.skipTest("No repo config/location.json exists")
+        with open(repo_loc, "rb") as f:
+            content_before = f.read()
+
+        loc.reset_location_config()
+        loc.save_location_config({"location_name": "Test Run Isolated Location"})
+        loc.reset_location_config()
+
+        with open(repo_loc, "rb") as f:
+            content_after = f.read()
+
+        self.assertEqual(
+            content_before,
+            content_after,
+            "Repository config/location.json was modified by test operations!",
+        )
+
 
 class TestPathResolution(unittest.TestCase):
     def test_resolve_config_dir(self):

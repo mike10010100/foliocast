@@ -154,7 +154,6 @@ class TestLiveHTTPDashboardAndLocationReconfig(unittest.TestCase):
         LOCATION_STORE.primary_path = self._orig_primary_path
         LOCATION_STORE.path = self._orig_store_path
         LOCATION_STORE.reset()
-        reset_location_config()
         server.invalidate_transit_cache()
         server.cb_tracker.set_stations(None)
         self.temp_dir.cleanup()
@@ -619,7 +618,6 @@ class TestConcurrencyStress(unittest.TestCase):
             LOCATION_STORE.primary_path = orig_primary_path
             LOCATION_STORE.path = orig_store_path
             LOCATION_STORE.reset()
-            reset_location_config()
             server.invalidate_transit_cache()
             server.cb_tracker.set_stations(None)
             temp_dir.cleanup()
