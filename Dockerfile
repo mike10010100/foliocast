@@ -38,7 +38,7 @@ RUN --mount=type=secret,id=ota_signing_key \
     fi
 
 # Stage 2: Runtime image
-FROM python:3.11-slim
+FROM python:3.14-slim
 
 # Install system fonts and curl for container health checks
 RUN apt-get update && apt-get install -y --no-install-recommends \
