@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.42.5] - 2026-10-13
+
+### Fixed
+
+- **Test Suite Location Store Isolation & Local Config Preservation** (`tests/__init__.py`, `tests/test_dashboard_views.py`, `tests/test_server.py`, `tests/test_m4_geometry_adversarial.py`, `tests/test_m4_challenger_http_concurrency.py`, `tests/test_location_config.py`):
+  - **Isolated Test Fixtures**: Added `IsolatedLocationMixin` and initialized `_global_test_loc_dir` along with `LOCATION_CONFIG` environment redirection in `tests/__init__.py` so tests always operate in clean temporary isolation and never read or write host configuration files.
+  - **Eliminated Config Overwrite Leakage**: Removed rogue `reset_location_config()` calls during test teardown in `tests/test_m4_challenger_http_concurrency.py` and wrapped mutating test cases in `tests/test_dashboard_views.py`, `tests/test_server.py`, and `tests/test_m4_geometry_adversarial.py` with `IsolatedLocationMixin`.
+  - **Restored User Location Configuration**: Restored user's configured location (`919 Park Ave`, `40.7482, -74.0305`) from cache, ensuring the active dashboard and API endpoints immediately reflect the user's config rather than default municipal landmarks.
+  - **Regression Coverage**: Added `test_store_reset_preserves_custom_file_on_disk` and `test_repo_config_location_json_never_modified_by_test_operations` in `tests/test_location_config.py` ensuring store resets never mutate existing on-disk location files and test runs never modify repository configuration.
+
+---
+
 ## [1.42.4] - 2026-10-12
 
 ### Fixed

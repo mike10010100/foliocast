@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import os
 import sys
+import tempfile
 import unittest
 from datetime import datetime
 from typing import Any
@@ -24,7 +25,7 @@ if _SERVER_DIR not in sys.path:
 
 from canvas import ScaledDraw  # noqa: E402
 from evening_view import render_evening_view  # noqa: E402
-from location import LocationConfig, reset_location_config  # noqa: E402
+from location import LOCATION_STORE, LocationConfig, reset_location_config  # noqa: E402
 from morning_view import render_morning_view  # noqa: E402
 from PIL import Image, ImageDraw  # noqa: E402
 
@@ -82,10 +83,24 @@ class DrawRecorder:
 
 class TestM4AdversarialGeometry(unittest.TestCase):
     def setUp(self):
+        super().setUp()
+        self._loc_temp_dir = tempfile.TemporaryDirectory()
+        self._loc_config_path = os.path.join(self._loc_temp_dir.name, "location.json")
+        self._orig_store_path = LOCATION_STORE.path
+        self._orig_primary_path = getattr(
+            LOCATION_STORE, "primary_path", LOCATION_STORE.path
+        )
+        LOCATION_STORE.primary_path = self._loc_config_path
+        LOCATION_STORE.path = self._loc_config_path
+        LOCATION_STORE.reset()
         reset_location_config()
 
     def tearDown(self):
-        reset_location_config()
+        LOCATION_STORE.primary_path = self._orig_primary_path
+        LOCATION_STORE.path = self._orig_store_path
+        LOCATION_STORE.reset()
+        self._loc_temp_dir.cleanup()
+        super().tearDown()
 
     def test_dead_space_elimination_morning_480_and_600(self):
         """Checks morning view without Citi Bike spans y=70..424 (480h) and y=70..542 (600h)."""

@@ -1,5 +1,7 @@
 import io
 import json
+import os
+import tempfile
 import threading
 import unittest
 from datetime import datetime
@@ -15,6 +17,7 @@ from canvas import (
 )
 from evening_view import render_evening_view
 from location import (
+    LOCATION_STORE,
     LocationConfig,
     reset_location_config,
     save_location_config,
@@ -30,13 +33,31 @@ from weather import (
 from server import get_fresh_data, invalidate_transit_cache
 
 
-class TestWeatherAdaptation(unittest.TestCase):
+class IsolatedLocationMixin:
+    """Isolates LOCATION_STORE to a temporary directory for tests to prevent modifying live config."""
+
     def setUp(self):
+        super().setUp()
+        self._loc_temp_dir = tempfile.TemporaryDirectory()
+        self._loc_config_path = os.path.join(self._loc_temp_dir.name, "location.json")
+        self._orig_store_path = LOCATION_STORE.path
+        self._orig_primary_path = getattr(
+            LOCATION_STORE, "primary_path", LOCATION_STORE.path
+        )
+        LOCATION_STORE.primary_path = self._loc_config_path
+        LOCATION_STORE.path = self._loc_config_path
+        LOCATION_STORE.reset()
         reset_location_config()
 
     def tearDown(self):
-        reset_location_config()
+        LOCATION_STORE.primary_path = self._orig_primary_path
+        LOCATION_STORE.path = self._orig_store_path
+        LOCATION_STORE.reset()
+        self._loc_temp_dir.cleanup()
+        super().tearDown()
 
+
+class TestWeatherAdaptation(IsolatedLocationMixin, unittest.TestCase):
     def test_weather_tracker_adopts_active_location_coordinates(self):
         save_location_config(
             {
@@ -361,7 +382,7 @@ class TestDynamicHeaderFormatting(unittest.TestCase):
         self.assertTrue(title_item[1].endswith("…") or len(title_item[1]) < 60)
 
 
-class TestMorningViewLayoutAdaptation(unittest.TestCase):
+class TestMorningViewLayoutAdaptation(IsolatedLocationMixin, unittest.TestCase):
     def test_morning_view_citi_bike_absent_bus_hero_expansion(self):
         containers = []
         img = Image.new("RGB", (800, 480), "white")
@@ -878,13 +899,9 @@ class TestMorningViewLayoutAdaptation(unittest.TestCase):
             ImageDraw.ImageDraw.text = orig_text
 
 
-class TestBackwardCompatibilityAndDefaultParity(unittest.TestCase):
-    def setUp(self):
-        reset_location_config()
-
-    def tearDown(self):
-        reset_location_config()
-
+class TestBackwardCompatibilityAndDefaultParity(
+    IsolatedLocationMixin, unittest.TestCase
+):
     def test_default_config_matches_baseline_morning_view(self):
         drawn_texts = []
         containers = []
@@ -1040,14 +1057,14 @@ class TestBackwardCompatibilityAndDefaultParity(unittest.TestCase):
         self.assertTrue(len(buf.getvalue()) > 0)
 
 
-class TestServerDynamicDataResolution(unittest.TestCase):
+class TestServerDynamicDataResolution(IsolatedLocationMixin, unittest.TestCase):
     def setUp(self):
-        reset_location_config()
+        super().setUp()
         invalidate_transit_cache()
 
     def tearDown(self):
-        reset_location_config()
         invalidate_transit_cache()
+        super().tearDown()
 
     def test_get_fresh_data_mock_reflects_active_stops(self):
         save_location_config(

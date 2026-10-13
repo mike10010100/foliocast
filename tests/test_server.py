@@ -15,6 +15,7 @@ from server import (
     get_fresh_data,
     is_private_address,
 )
+from tests import IsolatedLocationMixin
 
 
 class TestVersionWiring(unittest.TestCase):
@@ -129,8 +130,9 @@ class TestErrorStateRendering(unittest.TestCase):
         os.remove(out)
 
 
-class TestDataCache(unittest.TestCase):
+class TestDataCache(IsolatedLocationMixin, unittest.TestCase):
     def setUp(self):
+        super().setUp()
         # Reset module-level caches between tests.
         with server._data_lock:
             server._data_cache.update(
@@ -138,6 +140,9 @@ class TestDataCache(unittest.TestCase):
             )
         with server._render_lock:
             server._render_cache.clear()
+
+    def tearDown(self):
+        super().tearDown()
 
     def test_get_fresh_data_uses_mock_without_network(self):
         stops, status, cb = get_fresh_data(use_mock=True)
