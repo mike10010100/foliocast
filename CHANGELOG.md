@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.42.6] - 2026-10-13
+
+### Changed
+
+- **Docker Builder Image Upgrade** (`Dockerfile`): Upgraded multi-stage Go builder image from `golang:1.26-alpine` to `golang:1.27-alpine` for ARMv7 Kindle client cross-compilation and Ed25519 OTA signing.
+
+---
+
 ## [1.42.5] - 2026-10-13
 
 ### Fixed
