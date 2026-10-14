@@ -8,7 +8,7 @@
 # never copied into a layer). Its public half is embedded in the binary, the
 # binary is signed (tracker-arm.manifest.json), and a per-build server identity
 # certificate is minted so devices can authenticate this server's responses.
-FROM golang:1.26-alpine AS builder
+FROM golang:1.27-alpine AS builder
 ARG ALLOW_UNSIGNED_OTA=0
 WORKDIR /build
 COPY client-go/ .
