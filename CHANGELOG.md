@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.42.8] - 2026-10-13
+
+### Changed
+
+- **Toolchain & CI Runtime Alignment (`Go 1.27` & `Python 3.14`)** (`.mise.toml`, `.github/workflows/ci.yml`, `client-go/go.mod`, `pyproject.toml`, `docs/development.md`):
+  - Aligned `.mise.toml` local developer toolchain pins (`go = "1.27"`, `python = "3.14"`) and GitHub Actions CI runners (`go-version: '1.27'`, `python-version: '3.14'`) with the multi-stage `Dockerfile` images.
+  - Updated `client-go/go.mod` target to `go 1.27`, `pyproject.toml` Mypy `python_version` to `"3.14"`, and developer setup documentation in `docs/development.md`.
+
+---
+
 ## [1.42.7] - 2026-10-13
 
 ### Changed

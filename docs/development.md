@@ -7,15 +7,15 @@ This guide outlines developer workflows, static analysis standards, testing proc
 ## 1. Prerequisites
 
 ### 1.1 Fast Setup with mise (Recommended)
-If you use [mise](https://mise.jdx.dev/), all language runtimes (Go 1.26, Python 3.11) and linters (`golangci-lint`, `shellcheck`, `hadolint`) are pre-configured in `.mise.toml`:
+If you use [mise](https://mise.jdx.dev/), all language runtimes (Go 1.27, Python 3.14) and linters (`golangci-lint`, `shellcheck`, `hadolint`) are pre-configured in `.mise.toml`:
 ```bash
 mise install
 pip install -r requirements-dev.txt
 ```
 
 ### 1.2 Manual Prerequisites
-- **Go**: 1.22+ (tested up to 1.26 on Linux and macOS).
-- **Python**: 3.11+ (Python 3.11+ recommended and required for Docker builds).
+- **Go**: 1.22+ (tested up to 1.27 on Linux and macOS).
+- **Python**: 3.11+ (Python 3.14 recommended and used for Docker builds and CI).
 - **Shell**: Bash 4+ and POSIX `/bin/sh`.
 - **System Tools**: `make`, `curl`, `openssl`, `shellcheck`, `golangci-lint`, `hadolint`.
 
