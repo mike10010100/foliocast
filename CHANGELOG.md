@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.42.7] - 2026-10-13
+
+### Changed
+
+- **Docker Runtime Image Upgrade & Dependabot Grouping** (`Dockerfile`, `.github/dependabot.yml`):
+  - Upgraded container runtime base image from `python:3.11-slim` to `python:3.14-slim`.
+  - Added `docker-images` update group to `.github/dependabot.yml` so multi-stage `Dockerfile` base image updates are batched into a single PR.
+
+---
+
 ## [1.42.6] - 2026-10-13
 
 ### Changed
