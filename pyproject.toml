@@ -28,7 +28,7 @@ ignore = [
 "server/server.py" = ["S104"]
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.14"
 ignore_missing_imports = true
 disable_error_code = ["import-untyped"]
 warn_unused_configs = true
