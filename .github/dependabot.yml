@@ -29,4 +29,6 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
-
+    groups:
+      docker-images:
+        patterns: ["*"]
