@@ -52,11 +52,23 @@ When working in this repository:
 
 ---
 
+## 🧰 Toolchain & Environment (`mise`)
+
+This repository uses **[`mise`](https://mise.jdx.dev/)** ([`.mise.toml`](.mise.toml)) as the single source of truth for developer runtimes and linters:
+- **Pinned Tools**: `go = "1.27"`, `python = "3.14"`, `golangci-lint = "latest"`, `shellcheck = "latest"`, `hadolint = "latest"`.
+- **Python Dev Dependencies**: All test, lint, typecheck, and property-testing packages (`ruff`, `mypy`, `coverage`, `hypothesis`, `mutmut`, `pip-audit`, type stubs) live in [`requirements-dev.txt`](requirements-dev.txt).
+- Whenever `mise` installs or upgrades the Python runtime (or on a fresh environment), ensure dev dependencies are installed via `python3 -m pip install -r requirements-dev.txt` (configured automatically via the `[hooks] postinstall` hook in [`.mise.toml`](.mise.toml)).
+
+---
+
 ## ⚡ Mandatory Pre-Completion Checklist
 
 Before reporting any work as complete, you **must execute and pass every step** of this verification pipeline:
 
 ```bash
+# 0. Ensure mise toolchain & Python dev dependencies are ready
+mise install && python3 -m pip install -q -r requirements-dev.txt
+
 # 1. Check code formatting (Go, Python)
 make fmt-check
 

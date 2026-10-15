@@ -8,8 +8,9 @@ import (
 	"time"
 )
 
-// suspendSettleDelay is how long to let powerd settle after releasing the
-// screensaver, before attempting to suspend. Variable for tests.
+// suspendSettleDelay is how long to let the wireless interface and kernel wakeup
+// sources settle after disabling Wi-Fi before writing to /sys/power/state.
+// Variable for tests.
 var suspendSettleDelay = 2 * time.Second
 
 // Sysfs wakealarm and power-state nodes. On the PW5 (BD71828 RTC) the kernel
@@ -87,6 +88,13 @@ func (tc *TrackerClient) disarmRTC() {
 //	  -> echo mem > /sys/power/state   (blocks until the RTC fires)
 //	  -> re-enable Wi-Fi, render again
 //
+// Crucially, preventScreenSaver=1 is kept asserted across the entire loop and
+// re-asserted after waitForNetwork. It does not hold a kernel wakelock (so it
+// never blocks /sys/power/state), and keeping it set prevents Amazon's powerd
+// from running its own 10-minute inactivity timer and hijacking the device into
+// native screensaver sleep + deep hibernation when transitioning to an awake
+// phase (such as morning commute peak).
+//
 // The rendered e-ink image is bistable and stays visible through the suspend.
 // `allowSuspend` gates the whole path for safe testing; without it we wait on
 // the wall clock. Intervals below minSuspendInterval also stay awake.
@@ -100,13 +108,16 @@ func (tc *TrackerClient) runSleepLoop(ctx context.Context, cancel context.Cancel
 		default:
 		}
 
-		// Stay awake and ensure Wi-Fi is up to fetch/render.
+		// Stay awake and ensure Wi-Fi is up to fetch/render. Re-assert
+		// preventScreenSaver=1 after waitForNetwork as well, in case the
+		// immediate post-resume LIPC call raced with powerd thawing.
 		lipcSet("com.lab126.powerd", "preventScreenSaver", "1")
 		tc.setWireless(true)
 		if !tc.waitForNetwork(ctx) {
 			tc.cleanup()
 			return
 		}
+		lipcSet("com.lab126.powerd", "preventScreenSaver", "1")
 		serverPollSec := tc.fetchAndDrawDashboard(ctx, cancel)
 		// Sleep mode follows the *schedule's* cadence, deliberately ignoring the
 		// resident-mode "fast poll" hold. Otherwise an off-peak data tap held the
@@ -151,7 +162,8 @@ func (tc *TrackerClient) runSleepLoop(ctx context.Context, cancel context.Cancel
 		// wake, and the touch rails are cut in suspend), so we do not arm it.
 		// The power button is the wake source; pressing it starts an interaction
 		// session (detected below via a still-armed RTC alarm).
-		tc.releaseScreenSaver()
+		// Deliberately keep preventScreenSaver=1 asserted across direct kernel
+		// suspend so powerd's userland idle/hibernation timer stays inhibited.
 		if !tc.armSysfsWake(wakeInterval) {
 			tc.logRemote("Sleep mode: could not arm RTC; wall-clock wait.")
 			tc.setWireless(true)

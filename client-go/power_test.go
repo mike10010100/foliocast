@@ -884,3 +884,90 @@ func TestRunSleepLoop_BoundaryClampedWake(t *testing.T) {
 		t.Errorf("expected RTC alarm clamped to ~180s (near boundary), got +%ds", sec)
 	}
 }
+
+func TestRunSleepLoop_NeverReleasesScreenSaverAcrossSuspendAndPeakTransition(t *testing.T) {
+	patchRuntime(t)
+	png := []byte{0x89, 0x50, 0x4E, 0x47}
+	var pollCount int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/diag" || r.URL.Path == "/log" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		n := atomic.AddInt32(&pollCount, 1)
+		if n == 1 {
+			// Poll 1: offpeak (suspend=1)
+			w.Header().Set("X-Kindle-Poll-Interval", "600")
+			w.Header().Set("X-Tracker-Policy", "v=1;phase=offpeak;suspend=1;session=90;fast=600;hold=2700;sl=8,12")
+		} else {
+			// Poll 2+: morning commute peak (suspend=0)
+			w.Header().Set("X-Kindle-Poll-Interval", "60")
+			w.Header().Set("X-Tracker-Policy", "v=1;phase=peak;suspend=0;session=90;fast=600;hold=2700;sl=8,12")
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write(png)
+	}))
+	defer srv.Close()
+
+	GetBatteryInfo = func() BatteryInfo { return BatteryInfo{Level: 72} }
+	osCreate = tempFileCreate(t)
+	osReadFile = func(string) ([]byte, error) { return nil, os.ErrNotExist }
+	checkNetworkFn = func(context.Context) bool { return true }
+	osWriteFile = func(path string, data []byte, perm os.FileMode) error { return nil }
+
+	origSettle := suspendSettleDelay
+	suspendSettleDelay = 0
+	defer func() { suspendSettleDelay = origSettle }()
+
+	var mu sync.Mutex
+	var preventVals []string
+	var inCleanup bool
+
+	origCtx := execCommandContext
+	execCommandContext = func(ctx context.Context, name string, arg ...string) *exec.Cmd {
+		if name == "lipc-set-prop" && len(arg) >= 4 && arg[2] == "preventScreenSaver" {
+			mu.Lock()
+			if !inCleanup {
+				preventVals = append(preventVals, arg[3])
+			}
+			mu.Unlock()
+		}
+		return origCtx(ctx, "true")
+	}
+	defer func() { execCommandContext = origCtx }()
+
+	tc := NewTrackerClient(srv.URL, "auto")
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		tc.runSleepLoop(ctx, cancel, true)
+		close(done)
+	}()
+
+	deadline := time.Now().Add(3 * time.Second)
+	for atomic.LoadInt32(&pollCount) < 2 && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	time.Sleep(50 * time.Millisecond)
+
+	mu.Lock()
+	inCleanup = true
+	recorded := append([]string(nil), preventVals...)
+	mu.Unlock()
+
+	cancel()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("runSleepLoop timed out")
+	}
+
+	if len(recorded) < 4 {
+		t.Fatalf("expected at least 4 preventScreenSaver assertions across 2 cycles (pre+post waitForNetwork), got %v", recorded)
+	}
+	for i, v := range recorded {
+		if v != "1" {
+			t.Errorf("preventScreenSaver[%d] = %q; must never be released to 0 inside runSleepLoop", i, v)
+		}
+	}
+}

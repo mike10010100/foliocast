@@ -201,3 +201,38 @@ func TestClientLog_PostTextErrors(t *testing.T) {
 		t.Errorf("expected consecutiveFailures=1, got %d", tcPoll.consecutiveFailures)
 	}
 }
+
+func TestClientLog_PostDiagnosticsTruncation(t *testing.T) {
+	patchRuntime(t)
+
+	// Return a huge string from osReadFile so GatherDiagnostics + RunActiveProbe exceeds maxDiagReportBytes.
+	huge := strings.Repeat("X", maxDiagReportBytes+5000)
+	osReadFile = func(path string) ([]byte, error) {
+		return []byte(huge), nil
+	}
+
+	bodyCh := make(chan string, 1)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/diag" {
+			b, _ := io.ReadAll(r.Body)
+			bodyCh <- string(b)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	tc := NewTrackerClient(srv.URL, "auto")
+	tc.postDiagnostics(true)
+
+	select {
+	case got := <-bodyCh:
+		if !strings.HasSuffix(got, "\n...[truncated]") {
+			t.Errorf("expected truncated suffix, got len=%d", len(got))
+		}
+		if len(got) > 65536 {
+			t.Errorf("diagnostic payload len=%d exceeds server 64 KiB cap", len(got))
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("timed out waiting for truncated /diag post")
+	}
+}

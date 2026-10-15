@@ -40,6 +40,10 @@ func (tc *TrackerClient) postLog(ctx context.Context, msg string) {
 	tc.postText(ctx, "/log", msg)
 }
 
+// maxDiagReportBytes bounds the payload uploaded to /diag so it always fits
+// inside the server's 64 KiB (65536-byte) request body limit.
+const maxDiagReportBytes = 60000
+
 // postDiagnostics gathers a device report synchronously (so the probes run on
 // the caller's goroutine and don't leak past the caller's lifetime) and uploads
 // it to the server's /diag endpoint asynchronously. When active is true, it also
@@ -50,6 +54,9 @@ func (tc *TrackerClient) postDiagnostics(active bool) {
 	go func() {
 		if active {
 			report += "\n\n" + RunActiveProbe().Format()
+		}
+		if len(report) > maxDiagReportBytes {
+			report = report[:maxDiagReportBytes] + "\n...[truncated]"
 		}
 		tc.postText(context.Background(), "/diag", report)
 	}()

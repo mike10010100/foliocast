@@ -224,10 +224,11 @@ stateDiagram-v2
    - **`idle`**: The server's phase settings apply unchanged.
    - **`session`**: Active user interaction. Requests `present=interactive`, keeps device awake, lights panel to `session_lighting`, and resets session timer on every touch.
    - **`hold`**: Manual view and frontlight choices persist, and resident-mode polling stays at fast cadence for `fast_poll_hold`. In low-power suspend mode, this does not keep the device awake. Phase transitions immediately reset `hold` to `idle` to avoid leaking manual choices across phases (e.g. overnight).
-2. **Boundary-Clamped RTC Wakes**:
+2. **Boundary-Clamped RTC Wakes & `powerd` Hibernation Inhibition**:
    - In low-power sleep mode (`client-go/power.go`), when the device suspends to RAM, the RTC alarm is clamped to `min(interval, until - now)`.
    - This ensures the device wakes promptly when a schedule phase transitions (e.g., at the start of a morning commute peak) rather than oversleeping through phase changes.
    - If the phase boundary is closer than `minSuspendInterval` (120s), the device stays awake on wall-clock sleep instead of incurring suspend/resume latency.
+   - `preventScreenSaver=1` is kept asserted across direct `/sys/power/state` suspends (since it holds no kernel wakelock) and re-asserted after post-resume network stabilization, preventing Amazon's `powerd` from running its userland 10-minute inactivity timer and hijacking awake transitions into native screensaver sleep and deep hibernation.
 
 ---
 
