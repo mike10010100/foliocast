@@ -8,3 +8,7 @@ hadolint = "latest"
 [env]
 # Resolves flat imports when running python scripts directly from repository root
 PYTHONPATH = "server"
+
+[hooks]
+postinstall = "python3 -m pip install -q -r requirements-dev.txt"
+

@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.42.9] - 2026-10-15
+
+### Fixed
+
+- **Kindle `powerd` Native Sleep & Deep Hibernation Hijack on Phase Transition** (`client-go/power.go`, `client-go/client_log.go`, `client-go/power_test.go`, `client-go/client_log_test.go`, `docs/architecture.md`, `.mise.toml`, `AGENTS.md`):
+  - **Continuous `preventScreenSaver=1` Assertion Across Kernel Suspends**: Stopped releasing `com.lab126.powerd` `preventScreenSaver` to `0` before direct `/sys/power/state` suspends in `runSleepLoop` (`client-go/power.go`). Because `preventScreenSaver` is purely a userland `powerd` flag and holds no kernel wakelock, setting it to `0` allowed `powerd`'s 10-minute inactivity timer to accumulate and hijack the device into native sleep and deep hibernation (suspend-to-disk) after waking for `peak` mode.
+  - **Post-Resume `preventScreenSaver=1` Re-Assertion**: Re-asserted `preventScreenSaver=1` after `waitForNetwork` in `runSleepLoop` so `powerd` reliably receives the inhibition signal even if the immediate post-thaw LIPC call races with `powerd` resuming.
+  - **Bounded Active Diagnostic Payloads**: Capped diagnostic reports in `postDiagnostics` (`client-go/client_log.go`) to `60,000` bytes so full active probes (`X-Tracker-Diag: full`) never exceed the server's 64 KiB body limit.
+  - **Regression Coverage**: Added `TestRunSleepLoop_NeverReleasesScreenSaverAcrossSuspendAndPeakTransition` in `client-go/power_test.go` and `TestClientLog_PostDiagnosticsTruncation` in `client-go/client_log_test.go`.
+  - **Toolchain Formalization (`mise`)**: Added a `postinstall` hook in `.mise.toml` to automatically install `requirements-dev.txt` when `mise` upgrades Python patch versions, and documented the `mise` workflow in `AGENTS.md`.
+
+---
+
 ## [1.42.8] - 2026-10-13
 
 ### Changed
