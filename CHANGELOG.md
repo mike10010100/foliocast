@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.42.10] - 2026-10-22
+
+### Changed
+
+- **Idempotent Container Startup in `scripts/deploy.sh`**: Removed `--force-recreate` from `docker compose up -d foliocast` so boot-time and repeat deployments only recreate the container when the built image digest or Compose configuration changes.
+
+---
+
 ## [1.42.9] - 2026-10-15
 
 ### Fixed

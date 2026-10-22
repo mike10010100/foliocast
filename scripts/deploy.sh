@@ -76,7 +76,7 @@ if docker image inspect "foliocast:${IMAGE_TAG}" >/dev/null 2>&1; then
     docker tag "foliocast:${IMAGE_TAG}" "foliocast:latest" || true
 fi
 
-"${COMPOSE_CMD[@]}" up -d --force-recreate foliocast
+"${COMPOSE_CMD[@]}" up -d foliocast
 
 echo "⏳ Waiting for FolioCast to pass healthcheck..."
 CONTAINER_NAME="foliocast"
