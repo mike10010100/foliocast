@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.42.11] - 2026-11-07
+
+### Dependencies
+
+- **GitHub Actions**: Bump `actions/setup-python` from 7.0.0 to 7.1.0 in the github-actions group.
+
+---
+
 ## [1.42.10] - 2026-10-22
 
 ### Changed
